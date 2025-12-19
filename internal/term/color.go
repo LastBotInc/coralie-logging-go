@@ -23,15 +23,20 @@ func SupportsColor() bool {
 
 // Color codes for terminal output.
 const (
-	ColorReset  = "\033[0m"
-	ColorRed    = "\033[31m"
-	ColorGreen  = "\033[32m"
-	ColorYellow = "\033[33m"
-	ColorBlue   = "\033[34m"
-	ColorMagenta = "\033[35m"
-	ColorCyan   = "\033[36m"
-	ColorWhite  = "\033[37m"
-	ColorGray   = "\033[90m"
+	ColorReset    = "\033[0m"
+	ColorRed      = "\033[31m"
+	ColorGreen    = "\033[32m"
+	ColorYellow   = "\033[33m"
+	ColorBlue     = "\033[34m"
+	ColorMagenta  = "\033[35m"
+	ColorCyan     = "\033[36m"
+	ColorWhite    = "\033[37m"
+	ColorGray        = "\033[90m"  // Dark gray
+	ColorDarkGray    = "\033[90m"  // Dark gray
+	ColorLightGray   = "\033[37m"  // Light gray (same as white, but used for light gray text)
+	ColorBrightWhite = "\033[97m"
+	ColorBrightRed   = "\033[91m"
+	ColorPink        = "\033[95m" // Bright magenta
 )
 
 // LevelColor returns the color code for a log level.

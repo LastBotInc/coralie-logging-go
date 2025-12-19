@@ -5,13 +5,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/LastBotInc/coralie-logging-go/examples/fyne-audio-monitor/internal/app"
+	appstate "github.com/LastBotInc/coralie-logging-go/examples/fyne-audio-monitor/internal/app"
 	"github.com/LastBotInc/coralie-logging-go/examples/fyne-audio-monitor/internal/audio"
 	"github.com/LastBotInc/coralie-logging-go/examples/fyne-audio-monitor/internal/ui"
 	"github.com/LastBotInc/coralie-logging-go/pkg/clog"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
+	fyneapp "fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
@@ -40,19 +40,21 @@ func main() {
 	clog.Info("Application", "Starting audio monitor...")
 
 	// Create application state
-	state := app.NewState()
+	state := appstate.NewState()
 
 	// Use fake audio source (for demo - real implementation would use mic)
 	audioSource := audio.NewFakeSource(44100, 1)
 	state.SetAudioSource(audioSource)
 
 	// Create Fyne app
-	fyneApp := app.New()
+	fyneApp := fyneapp.New()
 	window := fyneApp.NewWindow("Audio Monitor")
-	window.Resize(fyne.NewSize(800, 600))
+	window.Resize(fyne.NewSize(400, 300))
+	window.SetFixedSize(true)
 
-	// Create UI components
-	histogram := ui.CreateHistogram(state.GetFFTBins())
+	// Create compact histogram with 1px bars (64 bins, ~128px wide, 60px tall)
+	histogramWidget := ui.NewHistogramWidget(64, 128, 60)
+
 	logButtons := ui.CreateLogButtons(func(level string) {
 		switch level {
 		case "Debug":
@@ -84,7 +86,8 @@ func main() {
 	})
 
 	// Start/Stop button
-	startStopBtn := widget.NewButton("Start", func() {
+	var startStopBtn *widget.Button
+	startStopBtn = widget.NewButton("Start", func() {
 		if state.IsRunning() {
 			state.SetRunning(false)
 			audioSource.Stop()
@@ -98,20 +101,20 @@ func main() {
 		}
 	})
 
-	// Layout
+	// Compact layout
 	content := container.NewVBox(
-		widget.NewLabel("Frequency Domain Histogram"),
-		histogram,
+		widget.NewLabel("FFT"),
+		histogramWidget.Container(),
 		widget.NewSeparator(),
-		widget.NewLabel("Log Level Buttons"),
 		logButtons,
-		widget.NewSeparator(),
 		startStopBtn,
-		spamButton,
-		audioToggle,
+		container.NewHBox(spamButton, audioToggle),
 	)
 
 	window.SetContent(content)
+
+	// Channel for FFT updates
+	fftUpdates := make(chan []float64, 1)
 
 	// Audio processing loop
 	go func() {
@@ -133,15 +136,44 @@ func main() {
 			bins := audio.BinMagnitudes(magnitudes, 64, audioSource.SampleRate())
 			state.SetFFTBins(bins)
 
-			// Update histogram (would need to refresh UI in real implementation)
-			// For now, just log progress
-			if time.Now().Unix()%10 == 0 {
-				clog.Info("Audio", "Processing audio frames...")
+			// Send update (non-blocking)
+			select {
+			case fftUpdates <- bins:
+			default:
 			}
 
 			// Write to audio log if enabled
 			if state.IsAudioLogging() {
 				clog.AudioWritePCM16(samples)
+			}
+		}
+	}()
+
+	// UI update function - must run on main Fyne thread
+	updateHistogram := func() {
+		bins := state.GetFFTBins()
+		if len(bins) == 0 {
+			return
+		}
+		// Use fyne.Do to ensure we're on the main thread
+		fyne.Do(func() {
+			histogramWidget.Update(bins)
+		})
+	}
+
+	// UI update loop - update from channel or timer
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				updateHistogram()
+			case bins := <-fftUpdates:
+				// Update state and UI
+				state.SetFFTBins(bins)
+				updateHistogram()
 			}
 		}
 	}()

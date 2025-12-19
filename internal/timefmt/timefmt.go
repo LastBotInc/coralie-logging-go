@@ -4,8 +4,8 @@ package timefmt
 import "time"
 
 // Format formats a time according to the given pattern.
+// For now, uses a simple HH:MM:SS format.
 func Format(t time.Time, pattern string) string {
-	// Placeholder - full implementation will be added
-	return t.Format(time.RFC3339)
+	return t.Format("15:04:05")
 }
 

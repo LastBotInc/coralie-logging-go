@@ -6,6 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
+
+	"github.com/LastBotInc/coralie-logging-go/internal/timefmt"
 )
 
 // fileSink handles file output with per-level routing.
@@ -65,7 +68,10 @@ func (s *fileSink) write(level Level, iface, formatted string) {
 		return // Level not configured for file output
 	}
 
-	output := fmt.Sprintf("[%s] %s: %s\n", level.String(), iface, formatted)
+	// Format: [<timestamp>][<level>][<facility>]<message>
+	now := time.Now()
+	timestamp := timefmt.Format(now, "")
+	output := fmt.Sprintf("[%s][%s][%s]%s\n", timestamp, level.String(), iface, formatted)
 	file.WriteString(output)
 }
 

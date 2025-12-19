@@ -4,8 +4,10 @@ package clog
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/LastBotInc/coralie-logging-go/internal/term"
+	"github.com/LastBotInc/coralie-logging-go/internal/timefmt"
 )
 
 // consoleSink handles console output with optional colors and emojis.
@@ -29,6 +31,7 @@ func newConsoleSink(cfg ConsoleConfig) *consoleSink {
 }
 
 // write writes a formatted message to console.
+// Format: [<timestamp>][<emoji+level>][<facility>][<message>]
 func (s *consoleSink) write(level Level, iface, formatted string) {
 	// Check if level should be omitted
 	if s.cfg.OmitLevels != nil && s.cfg.OmitLevels[level] {
@@ -36,22 +39,67 @@ func (s *consoleSink) write(level Level, iface, formatted string) {
 	}
 
 	levelStr := level.String()
+	now := time.Now()
+	timestamp := timefmt.Format(now, "")
+
 	var output string
 
-	if s.useColor || s.useEmoji {
-		// Build colored/emoji output
-		var prefix string
+	if s.useColor {
+		// Format: [<timestamp>][<emoji+level>][<facility>]<message>
+		// All brackets: dark gray
+		bracketColor := term.ColorDarkGray
+		
+		// Timestamp: dark gray brackets
+		timestampPart := bracketColor + "[" + term.ColorReset + timestamp + bracketColor + "]" + term.ColorReset
+
+		// Emoji + Level: emoji + (optional space) + colored level string, dark gray brackets
+		levelColor := term.LevelColor(levelStr)
+		emojiLevelPart := ""
 		if s.useEmoji {
-			prefix = term.LevelEmoji(levelStr) + " "
+			emoji := term.LevelEmoji(levelStr)
+			// Add space for INFO, WARNING, DEBUG; no space for SUCCESS, FAIL, ERROR, CATASTROPHE
+			space := " "
+			if level == LevelSuccess || level == LevelFail || level == LevelError || level == LevelCatastrophe || level == LevelDebug {
+				space = ""
+			}
+			emojiLevelPart = emoji + space + levelColor + levelStr + term.ColorReset
+		} else {
+			emojiLevelPart = levelColor + levelStr + term.ColorReset
 		}
-		if s.useColor {
-			prefix += term.LevelColor(levelStr) + fmt.Sprintf("[%s]", levelStr) + term.ColorReset + " "
-		} else if !s.useEmoji {
-			prefix = fmt.Sprintf("[%s] ", levelStr)
+		emojiLevelPart = bracketColor + "[" + term.ColorReset + emojiLevelPart + bracketColor + "]" + term.ColorReset
+
+		// Facility: bright white text, dark gray brackets
+		facilityPart := bracketColor + "[" + term.ColorReset + term.ColorBrightWhite + iface + term.ColorReset + bracketColor + "]" + term.ColorReset
+
+		// Message: light gray (default), green for success, yellow for warning, red for fail/error/catastrophe
+		// No brackets around message
+		messageColor := term.ColorLightGray
+		switch level {
+		case LevelSuccess:
+			messageColor = term.ColorGreen
+		case LevelWarning:
+			messageColor = term.ColorYellow
+		case LevelFail, LevelError, LevelCatastrophe:
+			messageColor = term.ColorRed
 		}
-		output = prefix + iface + ": " + formatted
+		messagePart := messageColor + formatted + term.ColorReset
+
+		output = timestampPart + emojiLevelPart + facilityPart + messagePart
 	} else {
-		output = fmt.Sprintf("[%s] %s: %s", levelStr, iface, formatted)
+		// No colors: plain format
+		emojiLevelPart := ""
+		if s.useEmoji {
+			emoji := term.LevelEmoji(levelStr)
+			// Add space for INFO, WARNING; no space for SUCCESS, FAIL, ERROR, CATASTROPHE, DEBUG
+			space := " "
+			if level == LevelSuccess || level == LevelFail || level == LevelError || level == LevelCatastrophe || level == LevelDebug {
+				space = ""
+			}
+			emojiLevelPart = emoji + space + levelStr
+		} else {
+			emojiLevelPart = levelStr
+		}
+		output = fmt.Sprintf("[%s][%s][%s]%s", timestamp, emojiLevelPart, iface, formatted)
 	}
 
 	fmt.Fprintln(os.Stdout, output)

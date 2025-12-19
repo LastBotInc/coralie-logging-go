@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// CreateLogButtons creates buttons for each log level.
+// CreateLogButtons creates buttons for each log level in a compact grid.
 func CreateLogButtons(onLog func(level string)) *fyne.Container {
 	levels := []string{"Debug", "Info", "Success", "Warning", "Fail", "Error", "Catastrophe"}
 	
@@ -20,16 +20,17 @@ func CreateLogButtons(onLog func(level string)) *fyne.Container {
 		buttons[i] = btn
 	}
 
-	return container.NewGridWithColumns(len(levels), buttons...)
+	// Use 4 columns for compact layout
+	return container.NewGridWithColumns(4, buttons...)
 }
 
 // CreateSpamButton creates a button to test deduplication.
 func CreateSpamButton(onSpam func()) *widget.Button {
-	return widget.NewButton("Spam same line 100x", onSpam)
+	return widget.NewButton("Spam 100x", onSpam)
 }
 
 // CreateAudioToggle creates a toggle for audio logging.
 func CreateAudioToggle(onToggle func(bool)) *widget.Check {
-	return widget.NewCheck("Enable audio WAV logging", onToggle)
+	return widget.NewCheck("Audio WAV", onToggle)
 }
 
