@@ -46,6 +46,7 @@ tmp/
 temp/
 *.tmp
 examples/fyne-audio-monitor/logs
+examples/fyne-audio-monitor/audio_logs
 demo_audio
 demo_logs
 .cursor
