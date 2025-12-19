@@ -137,11 +137,23 @@ func Catastrophe(iface, msg string, params ...interface{}) {
 
 // AudioWritePCM16 writes PCM16 frames to the audio log.
 func AudioWritePCM16(frames []int16) {
-	// Placeholder - full implementation will be added in Agent 5
+	initMu.RLock()
+	agent := globalAgent
+	initMu.RUnlock()
+
+	if agent != nil && agent.audioWriter != nil {
+		agent.audioWriter.WritePCM16(frames)
+	}
 }
 
 // AudioWriteBytesPCM16LE writes PCM16 little-endian bytes to the audio log.
 func AudioWriteBytesPCM16LE(data []byte) {
-	// Placeholder - full implementation will be added in Agent 5
+	initMu.RLock()
+	agent := globalAgent
+	initMu.RUnlock()
+
+	if agent != nil && agent.audioWriter != nil {
+		agent.audioWriter.WriteBytesPCM16LE(data)
+	}
 }
 

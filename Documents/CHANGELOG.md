@@ -15,4 +15,13 @@ All notable changes to coralie-logging-go will be documented in this file.
 - All log level functions (Debug, Info, Success, Warning, Fail, Error, Catastrophe)
 - Message formatting in agent goroutine using fmt.Appendf
 - Comprehensive unit tests including race detection tests
+- Console sink with color and emoji support (TTY-aware)
+- File sink with per-level routing
+- Hooks system (global and per-level)
+- Deduplication of consecutive identical messages
+- Signal handling (SIGINT, SIGTERM) with graceful shutdown
+- Panic recovery with log flushing
+- PCM16 audio logging to WAV files
+- Demo CLI application demonstrating all features
+- Fyne audio monitor example application with separate module
 

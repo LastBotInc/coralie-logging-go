@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/LastBotInc/coralie-logging-go/pkg/pcmlog"
 )
 
 // agent manages the logging agent goroutine and processes log events.
@@ -18,6 +20,12 @@ type agent struct {
 	consoleSink *consoleSink
 	fileSink   *fileSink
 	dedupe     *dedupeState
+	audioWriter interface {
+		WritePCM16([]int16) error
+		WriteBytesPCM16LE([]byte) error
+		Flush() error
+		Close() error
+	}
 }
 
 // newAgent creates a new agent with the given configuration.
@@ -44,6 +52,25 @@ func newAgent(cfg Config) (*agent, error) {
 
 	// Initialize deduplication
 	a.dedupe = newDedupeState(cfg.Dedupe)
+
+	// Initialize audio writer
+	if cfg.Audio.Enabled {
+		pcmlogCfg := pcmlog.Config{
+			Enabled:         cfg.Audio.Enabled,
+			SampleRate:      cfg.Audio.SampleRate,
+			Channels:        cfg.Audio.Channels,
+			BitsPerSample:   cfg.Audio.BitsPerSample,
+			OutputDir:       cfg.Audio.OutputDir,
+			FilenamePattern: cfg.Audio.FilenamePattern,
+		}
+		audioWriter, err := pcmlog.NewWriter(pcmlogCfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create audio writer: %w", err)
+		}
+		if audioWriter != nil {
+			a.audioWriter = audioWriter
+		}
+	}
 
 	a.wg.Add(1)
 	go a.run()
@@ -234,6 +261,12 @@ func (a *agent) stop(ctx context.Context) {
 	if a.fileSink != nil {
 		a.fileSink.flush()
 		a.fileSink.close()
+	}
+
+	// Flush and close audio writer
+	if a.audioWriter != nil {
+		a.audioWriter.Flush()
+		a.audioWriter.Close()
 	}
 }
 
