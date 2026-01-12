@@ -7,3 +7,7 @@ func TestIsTTY(t *testing.T) {
 	_ = IsTTY()
 }
 
+
+
+
+

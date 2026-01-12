@@ -7,3 +7,7 @@ func TestSupportsColor(t *testing.T) {
 	_ = SupportsColor()
 }
 
+
+
+
+
