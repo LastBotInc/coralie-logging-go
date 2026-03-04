@@ -11,15 +11,14 @@ import (
 
 // agent manages the logging agent goroutine and processes log events.
 type agent struct {
-	cfg        Config
-	queue      chan Event
-	done       chan struct{}
-	wg         sync.WaitGroup
-	shutdown   bool
-	mu         sync.Mutex
-	consoleSink *consoleSink
-	fileSink   *fileSink
-	dedupe     *dedupeState
+	cfg         Config
+	queue       chan Event
+	done        chan struct{}
+	wg          sync.WaitGroup
+	shutdown    bool
+	mu          sync.Mutex
+	sinks       []Sink
+	dedupe      *dedupeState
 	audioWriter interface {
 		WritePCM16([]int16) error
 		WriteBytesPCM16LE([]byte) error
@@ -36,19 +35,25 @@ func newAgent(cfg Config) (*agent, error) {
 		done:  make(chan struct{}),
 	}
 
-	// Initialize console sink
+	// Build sinks: console and file from existing config (backward compatible)
 	if cfg.Console.Enabled {
-		a.consoleSink = newConsoleSink(cfg.Console)
+		a.sinks = append(a.sinks, newConsoleSink(cfg.Console))
 	}
-
-	// Initialize file sink
 	if cfg.File.BaseDir != "" {
-		var err error
-		a.fileSink, err = newFileSink(cfg.File)
+		fs, err := newFileSink(cfg.File)
 		if err != nil {
 			return nil, err
 		}
+		if fs != nil {
+			a.sinks = append(a.sinks, fs)
+		}
 	}
+	// Additional sinks from Config.Sinks (e.g. BetterStack) are added in buildExtraSinks
+	extra, err := buildExtraSinks(cfg.Sinks)
+	if err != nil {
+		return nil, err
+	}
+	a.sinks = append(a.sinks, extra...)
 
 	// Initialize deduplication
 	a.dedupe = newDedupeState(cfg.Dedupe)
@@ -75,6 +80,30 @@ func newAgent(cfg Config) (*agent, error) {
 	a.wg.Add(1)
 	go a.run()
 	return a, nil
+}
+
+// buildExtraSinks builds sinks from Config.Sinks (e.g. BetterStack). Returns nil slice on no config or error.
+func buildExtraSinks(cfgs []SinkConfig) ([]Sink, error) {
+	if len(cfgs) == 0 {
+		return nil, nil
+	}
+	var out []Sink
+	for _, c := range cfgs {
+		switch c.Type {
+		case "betterstack":
+			s, err := newBetterStackSink(c)
+			if err != nil {
+				return nil, err
+			}
+			if s != nil {
+				out = append(out, s)
+			}
+		default:
+			// Unknown type: skip (or could return error)
+			continue
+		}
+	}
+	return out, nil
 }
 
 // enqueue attempts to enqueue an event, applying drop policy if queue is full.
@@ -156,14 +185,8 @@ func (a *agent) processEvent(e Event) {
 	// Call hooks before processing
 	a.callHooks(e)
 
-	// Write to console sink
-	if a.consoleSink != nil {
-		a.consoleSink.write(e.Level, e.Iface, formatted)
-	}
-
-	// Write to file sink
-	if a.fileSink != nil {
-		a.fileSink.write(e.Level, e.Iface, formatted)
+	for _, sink := range a.sinks {
+		sink.Write(e.Level, e.Iface, formatted)
 	}
 
 	// Record emitted
@@ -188,12 +211,8 @@ func (a *agent) emitDedupeSummary() {
 	// Call hooks
 	a.callHooks(summaryEvent)
 
-	// Write to sinks
-	if a.consoleSink != nil {
-		a.consoleSink.write(level, iface, summary)
-	}
-	if a.fileSink != nil {
-		a.fileSink.write(level, iface, summary)
+	for _, sink := range a.sinks {
+		sink.Write(level, iface, summary)
 	}
 
 	recordEmitted()
@@ -257,10 +276,9 @@ func (a *agent) stop(ctx context.Context) {
 	case <-ctx.Done():
 	}
 
-	// Flush and close sinks
-	if a.fileSink != nil {
-		a.fileSink.flush()
-		a.fileSink.close()
+	for _, sink := range a.sinks {
+		sink.Flush()
+		sink.Close()
 	}
 
 	// Flush and close audio writer

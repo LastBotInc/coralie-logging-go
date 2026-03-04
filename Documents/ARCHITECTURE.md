@@ -12,8 +12,8 @@ coralie-logging-go is an asynchronous, high-performance logging library built ar
 2. **Event Creation**: Events are created with level, interface, message, and parameters
 3. **Queue**: Events are enqueued to a bounded channel (configurable size)
 4. **Agent Goroutine**: Single goroutine processes events sequentially
-5. **Formatting**: Messages are formatted in the agent goroutine (using `fmt.Appendf`)
-6. **Sinks**: Formatted messages are written to configured sinks (console, files)
+5. **Formatting**: Messages are formatted in the agent goroutine (using `fmt.Sprintf`)
+6. **Sinks**: Formatted messages are written to all configured sinks (console, file, and any third-party sinks from `Config.Sinks`). Each sink implements the `Sink` interface and may apply its own level filtering and format (text or JSON).
 7. **Hooks**: Hooks are invoked in the agent goroutine before writing
 
 ### Key Design Decisions
@@ -32,7 +32,8 @@ Main logging package providing:
 - Configuration and initialization
 - Event model and levels
 - Agent goroutine and queue management
-- Sinks (console, file)
+- Sink interface and built-in sinks (console, file, BetterStack)
+- Formatters (text, JSON) for pluggable output format
 - Hooks system
 - Deduplication logic
 - Shutdown and signal handling

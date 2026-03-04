@@ -10,6 +10,20 @@ type Config struct {
 	Dedupe     DedupeConfig
 	Audio      AudioConfig
 	Hooks      HooksConfig
+	// Sinks configures additional third-party sinks (e.g. BetterStack). Nil = no extra sinks.
+	Sinks []SinkConfig
+}
+
+// SinkConfig configures one additional sink. Type determines which sink to use ("betterstack", etc.).
+// MinLevel and OmitLevels apply level filtering for this sink. Format is "text" or "json".
+// Type-specific fields: for Type "betterstack", set Token and optionally Endpoint.
+type SinkConfig struct {
+	Type       string       // "betterstack", etc.
+	MinLevel   Level        // only emit events at or above this level; LevelDebug = all
+	OmitLevels map[Level]bool
+	Format     string       // "text" or "json"
+	Token      string       // for betterstack: source token
+	Endpoint   string       // for betterstack: ingest URL (default https://in.logs.betterstack.com)
 }
 
 // ConsoleConfig configures console output.

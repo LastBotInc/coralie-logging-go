@@ -53,6 +53,17 @@ clog.Init(cfg)
 - `Hooks.Global`: List of global hooks (called for all levels)
 - `Hooks.PerLevel`: Map of level to hooks (called in addition to global)
 
+### Additional Sinks (third-party)
+
+- `Sinks`: Slice of `SinkConfig` for extra sinks (e.g. BetterStack). Nil or empty = no extra sinks.
+- Each `SinkConfig` has:
+  - `Type`: `"betterstack"` (first supported type)
+  - `MinLevel`: Only emit events at or above this level (e.g. `clog.LevelWarning`). Zero (`LevelDebug`) = all levels.
+  - `OmitLevels`: Map of levels to omit (same semantics as console)
+  - `Format`: `"text"` or `"json"` (BetterStack uses JSON)
+  - `Token`: For BetterStack, the source token (required)
+  - `Endpoint`: For BetterStack, ingest URL (default `https://in.logs.betterstack.com`)
+
 ## Example: Full Configuration
 
 ```go
@@ -84,7 +95,29 @@ cfg := clog.Config{
 clog.Init(cfg)
 ```
 
+## Example: With BetterStack sink
 
+```go
+cfg := clog.DefaultConfig()
+cfg.Console.Enabled = true
+cfg.Sinks = []clog.SinkConfig{
+    {
+        Type:     "betterstack",
+        Token:    os.Getenv("BETTERSTACK_SOURCE_TOKEN"),
+        Endpoint: "https://in.logs.betterstack.com", // optional
+        MinLevel: clog.LevelWarning,                // only WARNING and above
+        Format:   "json",
+    },
+}
+clog.Init(cfg)
+```
 
+## Example: Multiple sinks, different levels
 
+```go
+cfg.Sinks = []clog.SinkConfig{
+    {Type: "betterstack", Token: tok1, MinLevel: clog.LevelInfo, Format: "json"},
+    {Type: "betterstack", Token: tok2, MinLevel: clog.LevelError, Format: "json"},
+}
+```
 

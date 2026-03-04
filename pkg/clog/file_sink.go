@@ -103,3 +103,18 @@ func (s *fileSink) close() {
 		delete(s.files, level)
 	}
 }
+
+// Write implements Sink. Writes a formatted message to the appropriate file(s).
+func (s *fileSink) Write(level Level, iface, formatted string) {
+	s.write(level, iface, formatted)
+}
+
+// Flush implements Sink. Syncs all open files.
+func (s *fileSink) Flush() {
+	s.flush()
+}
+
+// Close implements Sink. Closes all open files.
+func (s *fileSink) Close() {
+	s.close()
+}

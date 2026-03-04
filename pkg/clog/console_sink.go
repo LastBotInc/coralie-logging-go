@@ -104,3 +104,14 @@ func (s *consoleSink) write(level Level, iface, formatted string) {
 
 	fmt.Fprintln(os.Stdout, output)
 }
+
+// Write implements Sink. Writes a formatted message to console.
+func (s *consoleSink) Write(level Level, iface, formatted string) {
+	s.write(level, iface, formatted)
+}
+
+// Flush implements Sink. No-op for console.
+func (s *consoleSink) Flush() {}
+
+// Close implements Sink. No-op for console.
+func (s *consoleSink) Close() {}

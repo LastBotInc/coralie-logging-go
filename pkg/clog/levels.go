@@ -14,6 +14,12 @@ const (
 	LevelCatastrophe
 )
 
+// AtLeast reports whether l is at or above min in severity order
+// (Debug < Info < ... < Catastrophe). Used for per-sink minimum level filtering.
+func (l Level) AtLeast(min Level) bool {
+	return l >= min
+}
+
 // String returns the string representation of the level.
 func (l Level) String() string {
 	switch l {
