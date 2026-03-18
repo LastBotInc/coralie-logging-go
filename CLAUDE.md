@@ -126,3 +126,22 @@ task/templates/ --> task/active/ --> task/done/ --> task/archive/
 4. Update all affected documentation
 5. Run `go test -race ./...`
 6. Update `Documents/CHANGELOG.md`
+
+---
+
+# Coralie Ecosystem
+
+## Conventions
+
+| Convention | Value |
+|-----------|-------|
+| Internal audio format | PCM16, 24kHz, mono, 20ms frames (480 samples) |
+| Go module prefix | `github.com/LastBotInc/coralie-logging-go` |
+| Logging library | this package (coralie-logging-go) |
+| Log levels | Debug < Info < Success < Warning < Fail < Error < Catastrophe |
+
+Note: This is a library — it has no Docker image, K8s deployment, or gRPC port. It is imported by services as a Go module dependency.
+
+## Sibling Dependencies
+
+None — this is a foundational library with no coralie sibling dependencies. All other coralie Go services depend on this package.
