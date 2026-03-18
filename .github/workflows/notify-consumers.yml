@@ -1,0 +1,34 @@
+name: Notify Consumers on Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  notify-consumers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify consumer repos of new release
+        env:
+          GH_TOKEN: ${{ secrets.CONSUMER_NOTIFY_TOKEN }}
+          NEW_VERSION: ${{ github.ref_name }}
+        run: |
+          echo "New logging-go release: $NEW_VERSION"
+          echo ""
+          CONSUMERS=(
+            "LastBotInc/coralie-gemini-worker"
+            "LastBotInc/coralie-sip-worker"
+            "LastBotInc/coralie-livekit-worker"
+            "LastBotInc/coralie-webrtc-worker"
+          )
+          for repo in "${CONSUMERS[@]}"; do
+            echo "Notifying $repo..."
+            gh workflow run update-logging-go.yml \
+              --repo "$repo" \
+              --field version="$NEW_VERSION" \
+              2>/dev/null && echo "  Triggered update workflow in $repo" \
+              || echo "  Warning: Could not trigger workflow in $repo (may need setup)"
+          done
+          echo ""
+          echo "Done. Consumer repos will create update PRs if workflows are configured."
