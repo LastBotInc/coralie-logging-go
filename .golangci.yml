@@ -15,12 +15,13 @@ linters:
       errorf-multi: true
       asserts: true
       comparison: true
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+        text: "G304"
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-      text: "G304"
