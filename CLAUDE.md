@@ -118,6 +118,12 @@ Debug < Info < Success < Warning < Fail < Error < Catastrophe
 task/templates/ --> task/active/ --> task/done/ --> task/archive/
 ```
 
+## Ticket Lifecycle
+
+- **NEVER move tickets directly to Done** — all changes must be tested first
+- Required flow: `Backlog → In Progress → In Review → Done`
+- When moving to **In Review**, include testing instructions: what to test, how to test, expected results, edge cases
+
 ## Adding New Features
 
 1. Copy template from `task/templates/golang/IMPLEMENTATION.md` to `task/active/`
