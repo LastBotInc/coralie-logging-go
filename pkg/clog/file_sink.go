@@ -41,7 +41,7 @@ func newFileSink(cfg FileConfig) (*fileSink, error) {
 				continue // Skip empty filenames (omitted level)
 			}
 			filepath := filepath.Join(cfg.BaseDir, filename)
-			file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+			file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600) //nolint:gosec // filepath is constructed from config, not user input
 			if err != nil {
 				// Close already opened files
 				s.close()
