@@ -1,4 +1,3 @@
-// Package term provides terminal utilities for TTY detection.
 package term
 
 import (
@@ -13,4 +12,3 @@ func IsTTY() bool {
 	_, err := unix.IoctlGetTermios(fd, unix.TIOCGETA)
 	return err == nil
 }
-
