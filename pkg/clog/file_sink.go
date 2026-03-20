@@ -25,7 +25,7 @@ func newFileSink(cfg FileConfig) (*fileSink, error) {
 	}
 
 	// Create base directory
-	if err := os.MkdirAll(cfg.BaseDir, 0755); err != nil {
+	if err := os.MkdirAll(cfg.BaseDir, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
@@ -41,7 +41,7 @@ func newFileSink(cfg FileConfig) (*fileSink, error) {
 				continue // Skip empty filenames (omitted level)
 			}
 			filepath := filepath.Join(cfg.BaseDir, filename)
-			file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+			file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 			if err != nil {
 				// Close already opened files
 				s.close()
@@ -72,7 +72,7 @@ func (s *fileSink) write(level Level, iface, formatted string) {
 	now := time.Now()
 	timestamp := timefmt.Format(now, "")
 	output := fmt.Sprintf("[%s][%s][%s]%s\n", timestamp, level.String(), iface, formatted)
-	file.WriteString(output)
+	_, _ = file.WriteString(output)
 }
 
 // flush flushes all open files.
@@ -85,7 +85,7 @@ func (s *fileSink) flush() {
 	defer s.mu.Unlock()
 
 	for _, file := range s.files {
-		file.Sync()
+		_ = file.Sync()
 	}
 }
 
@@ -99,7 +99,7 @@ func (s *fileSink) close() {
 	defer s.mu.Unlock()
 
 	for level, file := range s.files {
-		file.Close()
+		_ = file.Close()
 		delete(s.files, level)
 	}
 }

@@ -26,27 +26,22 @@ func NewWriter(cfg Config) (*Writer, error) {
 	}
 
 	// Create output directory
-	if err := os.MkdirAll(cfg.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(cfg.OutputDir, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create audio log directory: %w", err)
 	}
 
 	// Generate filename
-	filename := cfg.FilenamePattern
-	if filename == "" {
-		filename = "audio_%Y%m%d_%H%M%S.wav"
-	}
-	
-	// Simple time formatting (basic implementation)
 	now := time.Now()
-	filename = now.Format("20060102_150405.wav")
+	var filename string
 	if cfg.FilenamePattern != "" {
-		// Try to parse pattern (simplified - just use timestamp)
 		filename = fmt.Sprintf("audio_%s.wav", now.Format("20060102_150405"))
+	} else {
+		filename = now.Format("20060102_150405.wav")
 	}
 
 	filepath := filepath.Join(cfg.OutputDir, filename)
 
-	file, err := os.Create(filepath)
+	file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600) //nolint:gosec // filepath is constructed internally
 	if err != nil {
 		return nil, fmt.Errorf("failed to create WAV file: %w", err)
 	}
@@ -59,7 +54,7 @@ func NewWriter(cfg Config) (*Writer, error) {
 
 	// Write WAV header (will be updated on close)
 	if err := w.writeHeader(); err != nil {
-		file.Close()
+		_ = file.Close()
 		return nil, fmt.Errorf("failed to write WAV header: %w", err)
 	}
 
@@ -238,7 +233,7 @@ func (w *Writer) Close() error {
 
 	// Update header with correct sizes
 	if err := w.updateHeader(); err != nil {
-		w.file.Close()
+		_ = w.file.Close()
 		return err
 	}
 

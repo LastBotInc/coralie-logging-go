@@ -283,8 +283,8 @@ func (a *agent) stop(ctx context.Context) {
 
 	// Flush and close audio writer
 	if a.audioWriter != nil {
-		a.audioWriter.Flush()
-		a.audioWriter.Close()
+		_ = a.audioWriter.Flush()
+		_ = a.audioWriter.Close()
 	}
 }
 

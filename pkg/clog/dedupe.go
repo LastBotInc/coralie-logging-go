@@ -58,11 +58,5 @@ func (d *dedupeState) flushSummary() (Level, string, string, bool) {
 	return d.lastLevel, d.lastIface, summary, true
 }
 
-// reset resets the dedupe state.
-func (d *dedupeState) reset() {
-	d.lastLevel = 0
-	d.lastIface = ""
-	d.lastMessage = ""
-	d.repeatCount = 0
-}
+
 

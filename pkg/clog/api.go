@@ -142,7 +142,7 @@ func AudioWritePCM16(frames []int16) {
 	initMu.RUnlock()
 
 	if agent != nil && agent.audioWriter != nil {
-		agent.audioWriter.WritePCM16(frames)
+		_ = agent.audioWriter.WritePCM16(frames)
 	}
 }
 
@@ -153,7 +153,7 @@ func AudioWriteBytesPCM16LE(data []byte) {
 	initMu.RUnlock()
 
 	if agent != nil && agent.audioWriter != nil {
-		agent.audioWriter.WriteBytesPCM16LE(data)
+		_ = agent.audioWriter.WriteBytesPCM16LE(data)
 	}
 }
 

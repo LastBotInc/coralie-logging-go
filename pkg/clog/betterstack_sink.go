@@ -80,7 +80,7 @@ func (s *betterstackSink) Write(level Level, iface, formatted string) {
 	if err != nil {
 		return
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 // Flush implements Sink. No-op for v1 (no buffer).

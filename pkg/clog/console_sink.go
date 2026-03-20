@@ -102,7 +102,7 @@ func (s *consoleSink) write(level Level, iface, formatted string) {
 		output = fmt.Sprintf("[%s][%s][%s]%s", timestamp, emojiLevelPart, iface, formatted)
 	}
 
-	fmt.Fprintln(os.Stdout, output)
+	_, _ = fmt.Fprintln(os.Stdout, output)
 }
 
 // Write implements Sink. Writes a formatted message to console.
