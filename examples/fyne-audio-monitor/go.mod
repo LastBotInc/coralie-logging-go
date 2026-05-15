@@ -1,6 +1,6 @@
 module github.com/LastBotInc/coralie-logging-go/examples/fyne-audio-monitor
 
-go 1.24.0
+go 1.26.3
 
 replace github.com/LastBotInc/coralie-logging-go => ../..
 

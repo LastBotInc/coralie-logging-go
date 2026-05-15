@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go 1.24 or later
+- Go 1.26.3 or later
 - No CGO dependencies for core library
 
 ## Build Commands
