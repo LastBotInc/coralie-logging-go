@@ -69,7 +69,7 @@ Comprehensive documentation is available in the [Documents/](Documents/) directo
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file.
+Proprietary. Copyright © Lastbot Europe Oy. All rights reserved. See [LICENSE](LICENSE).
 
 
 
