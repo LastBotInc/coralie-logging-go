@@ -121,3 +121,46 @@ cfg.Sinks = []clog.SinkConfig{
 }
 ```
 
+## PII redaction (LAS-1488)
+
+Every formatted log message is scrubbed for caller PII at a single choke point
+inside the agent (`processEvent`) before it reaches deduplication and any sink
+(console, file, BetterStack/Postgres). No sink ever sees raw PII, and all future
+call sites are covered automatically.
+
+Default patterns (applied in order; ordering prevents the patterns from eating
+each other's digits):
+
+| Pattern | Matches | Replacement |
+|---------|---------|-------------|
+| email | `user@host.tld` | `<email>` |
+| ipv4 | four dotted octets, optional `:port` (incl. media IPs) | `<ip>` |
+| phone (E.164) | `+` followed by 7-15 digits | `<phone>` |
+| phone (id form) | 7-15 digits immediately followed by `@` (the `participant_id=<CID>@<ip>` / `conference_id=<DID>@<ip>` form) | `<phone>@` |
+
+Bare in-sentence digit runs (no `+`, no trailing `@`) are deliberately **not**
+redacted, so timestamps, `port=5060`, `samples=480`, byte/frame counters, UUIDs
+and version strings are preserved. The structural fix for caller-ID embedded in
+participant/conference IDs is CID-hashing (separate ticket).
+
+### Toggle
+
+Redaction is **enabled by default**. To disable it (intended for local
+development only):
+
+- Environment (read once at startup): `CORALIE_LOG_REDACT=0` (also accepts
+  `false`, `no`, `off`, case-insensitive).
+- Programmatically: `clog.SetRedactionEnabled(false)`.
+
+### Custom patterns
+
+Ops can replace the pattern set at runtime:
+
+```go
+r := clog.NewRedactor([]clog.RedactPattern{
+    {Name: "email", Regex: `[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`, Replacement: "<email>"},
+    {Name: "account", Regex: `ACC-\d{6}`, Replacement: "<account>"},
+})
+clog.SetRedactor(r)
+```
+

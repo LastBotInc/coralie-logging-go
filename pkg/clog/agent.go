@@ -169,6 +169,12 @@ func (a *agent) processEvent(e Event) {
 	// Format the message first
 	formatted := a.formatMessage(e)
 
+	// Centralized PII redaction (LAS-1488 layer #1). This is the single choke
+	// point where the final formatted message exists before it fans out to
+	// dedupe and every sink (console, file, BetterStack/Postgres). Redacting
+	// here once guarantees no sink (and no dedupe key) ever sees raw caller PII.
+	formatted = Redact(formatted)
+
 	// Check deduplication
 	shouldSuppress, shouldEmitSummary := a.dedupe.check(e.Level, e.Iface, formatted)
 
