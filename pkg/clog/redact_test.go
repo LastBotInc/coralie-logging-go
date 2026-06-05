@@ -273,81 +273,6 @@ func TestRedactionThroughSinkPath(t *testing.T) {
 	}
 }
 
-// TestRedactEventClonesAndScrubs verifies RedactEvent scrubs the Message template
-// and every string-valued param, leaves non-string params untouched, and never
-// mutates the caller's Event or Params slice.
-func TestRedactEventClonesAndScrubs(t *testing.T) {
-	r := NewDefaultRedactor()
-
-	origParams := []interface{}{
-		"participant_id=358401234567@10.0.0.19", // string with PII -> redacted
-		42,                                      // int -> untouched
-		"contact alice@example.com",             // string with PII -> redacted
-		struct{ N int }{N: 7},                   // struct -> untouched
-	}
-	e := Event{
-		Level:   LevelInfo,
-		Iface:   "SIP",
-		Message: "caller +358401234567 via %s n=%d",
-		Params:  origParams,
-	}
-
-	out := r.RedactEvent(e)
-
-	if out.Message != "caller <phone> via %s n=%d" {
-		t.Errorf("Message = %q, want redacted", out.Message)
-	}
-	if out.Params[0] != "participant_id=<phone>@<ip>" {
-		t.Errorf("Params[0] = %v, want redacted", out.Params[0])
-	}
-	if out.Params[1] != 42 {
-		t.Errorf("Params[1] = %v, want 42 (untouched int)", out.Params[1])
-	}
-	if out.Params[2] != "contact <email>" {
-		t.Errorf("Params[2] = %v, want redacted email", out.Params[2])
-	}
-	if out.Params[3] != (struct{ N int }{N: 7}) {
-		t.Errorf("Params[3] = %v, want untouched struct", out.Params[3])
-	}
-
-	// Caller's Event and slice must be untouched (clone semantics).
-	if e.Message != "caller +358401234567 via %s n=%d" {
-		t.Errorf("caller Message mutated: %q", e.Message)
-	}
-	if origParams[0] != "participant_id=358401234567@10.0.0.19" {
-		t.Errorf("caller Params[0] mutated: %v", origParams[0])
-	}
-	if &out.Params[0] == &origParams[0] {
-		t.Error("RedactEvent must allocate a new Params slice, not alias the caller's")
-	}
-}
-
-// TestRedactEventToggleDisabled verifies the package-level RedactEvent passes the
-// Event through unchanged when redaction is disabled.
-func TestRedactEventToggleDisabled(t *testing.T) {
-	prev := RedactionEnabled()
-	defer SetRedactionEnabled(prev)
-
-	e := Event{
-		Level:   LevelInfo,
-		Iface:   "SIP",
-		Message: "participant_id=%s",
-		Params:  []interface{}{"358401234567@10.0.0.19"},
-	}
-
-	SetRedactionEnabled(false)
-	out := RedactEvent(e)
-	if out.Message != e.Message || out.Params[0] != "358401234567@10.0.0.19" {
-		t.Errorf("disabled RedactEvent should pass through, got %+v", out)
-	}
-
-	SetRedactionEnabled(true)
-	out = RedactEvent(e)
-	if out.Params[0] != "<phone>@<ip>" {
-		t.Errorf("enabled RedactEvent param = %v, want redacted", out.Params[0])
-	}
-}
-
 // captureHook records every Event handed to OnLog, proving exactly what a hook
 // (which may forward to Sentry/Datadog/webhooks) actually receives.
 type captureHook struct {
@@ -369,9 +294,11 @@ func (h *captureHook) snapshot() []Event {
 	return out
 }
 
-// TestHookReceivesRedactedEvent proves Fix #1: a Global hook receives an Event
-// whose Message AND string params are redacted (no raw PII), with non-string
-// params untouched. This guards the hook PII-leak path through the real agent.
+// TestHookReceivesRedactedEvent proves Fix #2: a Global hook receives an Event
+// whose Message is the single REDACTED FORMATTED string, with Params cleared --
+// so a hook that re-formats or serializes the Event cannot reconstruct PII from
+// Message+Params fragments. This guards the hook PII-leak path through the real
+// agent.
 func TestHookReceivesRedactedEvent(t *testing.T) {
 	prevEnabled := RedactionEnabled()
 	defer SetRedactionEnabled(prevEnabled)
@@ -410,19 +337,16 @@ func TestHookReceivesRedactedEvent(t *testing.T) {
 	}
 
 	e := got[0]
-	if e.Message != "caller <phone> participant_id=%s email=%s seq=%d" {
-		t.Errorf("hook Message not redacted: %q", e.Message)
+	// Message is the fully formatted + redacted line; Level/Iface preserved.
+	want := "caller <phone> participant_id=<phone>@<ip> email=<email> seq=7"
+	if e.Message != want {
+		t.Errorf("hook Message = %q, want %q", e.Message, want)
 	}
-	// Params are the bare PII values (the participant_id=/email= literals live in
-	// the Message template), so they redact to the bare tokens.
-	if e.Params[0] != "<phone>@<ip>" {
-		t.Errorf("hook Params[0] not redacted: %v", e.Params[0])
+	if e.Params != nil {
+		t.Errorf("hook Params = %v, want nil (cleared so fragments can't be recombined)", e.Params)
 	}
-	if e.Params[1] != "<email>" {
-		t.Errorf("hook Params[1] not redacted: %v", e.Params[1])
-	}
-	if e.Params[2] != 7 {
-		t.Errorf("hook Params[2] = %v, want 7 (untouched int)", e.Params[2])
+	if e.Level != LevelInfo || e.Iface != "SIP" {
+		t.Errorf("hook Level/Iface not preserved: level=%v iface=%q", e.Level, e.Iface)
 	}
 
 	// Hard guarantee: no raw PII anywhere in the Event handed to the hook.
@@ -436,6 +360,59 @@ func TestHookReceivesRedactedEvent(t *testing.T) {
 		if strings.Contains(hay, leak) {
 			t.Errorf("raw PII %q leaked to hook", leak)
 		}
+	}
+}
+
+// TestHookPIIByFormatting proves Fix #2's reconstruction guarantee (MINOR 3): the
+// PII exists ONLY after formatting -- Message="%s@%s", Params=["alice","example.com"]
+// where each param is individually non-PII. The hook must receive the redacted
+// formatted Message "<email>" and never the recombinable "alice@example.com".
+func TestHookPIIByFormatting(t *testing.T) {
+	prevEnabled := RedactionEnabled()
+	defer SetRedactionEnabled(prevEnabled)
+	SetRedactionEnabled(true)
+
+	hook := &captureHook{}
+	cfg := DefaultConfig()
+	cfg.Console.Enabled = false
+	cfg.Dedupe.Enabled = false
+	cfg.Hooks.Global = []Hook{hook}
+
+	a, err := newAgent(cfg)
+	if err != nil {
+		t.Fatalf("newAgent: %v", err)
+	}
+	defer a.stop(context.Background())
+
+	a.enqueue(Event{
+		Level:   LevelInfo,
+		Iface:   "App",
+		Message: "%s@%s",
+		Params:  []interface{}{"alice", "example.com"},
+	})
+
+	deadline := time.Now().Add(2 * time.Second)
+	var got []Event
+	for time.Now().Before(deadline) {
+		got = hook.snapshot()
+		if len(got) >= 1 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if len(got) < 1 {
+		t.Fatalf("hook received no events")
+	}
+
+	e := got[0]
+	if e.Message != "<email>" {
+		t.Errorf("hook Message = %q, want %q (redacted post-format email)", e.Message, "<email>")
+	}
+	if strings.Contains(e.Message, "alice@example.com") {
+		t.Errorf("hook Message reconstructed PII: %q", e.Message)
+	}
+	if e.Params != nil {
+		t.Errorf("hook Params = %v, want nil (no fragments to recombine)", e.Params)
 	}
 }
 
@@ -575,6 +552,63 @@ func TestRedactDoSBound(t *testing.T) {
 	// redaction tokens are shorter than the PII they replaced, so this holds).
 	if len(got) > maxRedactLen+64 {
 		t.Errorf("output not bounded: len=%d, want <= %d", len(got), maxRedactLen+64)
+	}
+}
+
+// TestAgentSinkPathDoSBound proves Fix #1 (MINOR 4): an oversized %s param logged
+// through the real agent is bounded BEFORE formatting, so the formatted string a
+// sink receives is capped (≤ ~64 KiB + marker). This proves the formatter-level
+// bound (boundParams in processEvent), not just Redact in isolation.
+func TestAgentSinkPathDoSBound(t *testing.T) {
+	prevEnabled := RedactionEnabled()
+	defer SetRedactionEnabled(prevEnabled)
+	SetRedactionEnabled(true)
+
+	sink := &captureSink{}
+	cfg := DefaultConfig()
+	cfg.Console.Enabled = false
+	cfg.Dedupe.Enabled = false
+
+	a, err := newAgent(cfg)
+	if err != nil {
+		t.Fatalf("newAgent: %v", err)
+	}
+	a.sinks = append(a.sinks, sink)
+	defer a.stop(context.Background())
+
+	// 1 MB attacker-controlled %s arg.
+	huge := strings.Repeat("A", 1<<20)
+	a.enqueue(Event{
+		Level:   LevelInfo,
+		Iface:   "SIP",
+		Message: "blob=%s end",
+		Params:  []interface{}{huge},
+	})
+
+	deadline := time.Now().Add(2 * time.Second)
+	var got []string
+	for time.Now().Before(deadline) {
+		got = sink.snapshot()
+		if len(got) >= 1 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if len(got) < 1 {
+		t.Fatalf("sink received no messages")
+	}
+
+	out := got[0]
+	// Bounded: the oversized param is truncated before Sprintf, so the whole
+	// formatted line stays near the cap plus the small prefix/suffix and marker.
+	if len(out) > maxRedactLen+128 {
+		t.Errorf("sink output not bounded: len=%d, want <= %d", len(out), maxRedactLen+128)
+	}
+	if !strings.Contains(out, "<truncated ") {
+		t.Errorf("expected truncation marker in sink output, got tail %q", out[max(0, len(out)-40):])
+	}
+	if !strings.HasPrefix(out, "blob=") {
+		t.Errorf("formatting lost: output should start with the template prefix, got %q", out[:min(20, len(out))])
 	}
 }
 

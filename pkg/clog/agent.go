@@ -166,18 +166,28 @@ func (a *agent) run() {
 
 // processEvent processes a single log event.
 //
-// Ordering is security-critical (LAS-1488, Gemini review):
+// Ordering is security-critical (LAS-1488, Gemini + CodeRabbit review):
 //
-//  1. Format the message.
-//  2. Dedupe on the RAW formatted string. Two distinct callers that differ only
+//  1. Bound oversized string params BEFORE formatting. A multi-megabyte %s arg
+//     would otherwise force a giant fmt.Sprintf allocation/concat on the agent
+//     goroutine before any truncation. boundParams truncates such params (with a
+//     marker) up front, capping per-call work; Redact's own length guard stays as
+//     a backstop. The caller's Params slice is never mutated.
+//  2. Format the (bounded) message.
+//  3. Dedupe on the RAW formatted string. Two distinct callers that differ only
 //     in PII (participant_id=1111111@.. vs 2222222@..) must NOT collapse into one
 //     dedupe key, or the second caller is silently suppressed -- blinding ops to
 //     concurrent calls. So the dedupe key is computed BEFORE redaction.
-//  3. Only after the suppress check passes do we redact: once for the sinks
-//     (formattedRedacted) and once as a cloned Event for the hooks. Hooks may
-//     forward to Sentry/Datadog/webhooks and must never see raw Message+Params.
+//  4. Only after the suppress check passes do we redact the formatted string once.
+//     Hooks receive an Event whose Message is that single redacted string with
+//     Params cleared -- so a hook that re-formats or serializes the Event cannot
+//     recombine PII split across Message+Params (e.g. "%s@%s" + ["alice","x.com"]).
+//     The same redacted string feeds every sink.
 func (a *agent) processEvent(e Event) {
-	// Format the message first.
+	// Bound oversized string params before formatting (DoS guard, pre-Sprintf).
+	e.Params = boundParams(e.Params)
+
+	// Format the (bounded) message.
 	formatted := a.formatMessage(e)
 
 	// Check deduplication on the RAW (pre-redaction) formatted string so distinct
@@ -194,13 +204,17 @@ func (a *agent) processEvent(e Event) {
 		return
 	}
 
-	// Centralized PII redaction (LAS-1488 layer #1). Redact only after the dedupe
-	// suppress check, so neither the sinks nor the hooks ever see raw caller PII.
+	// Centralized PII redaction (LAS-1488 layer #1). Redact the formatted string
+	// once, only after the dedupe suppress check, so neither the sinks nor the
+	// hooks ever see raw caller PII.
 	formattedRedacted := Redact(formatted)
-	redactedEvent := RedactEvent(e)
 
-	// Call hooks with the redacted Event clone before fanning out to sinks.
-	a.callHooks(redactedEvent)
+	// Hand hooks the redacted formatted string with Params cleared, so a hook that
+	// re-formats/serializes the Event cannot reconstruct PII from the fragments.
+	hookEvent := e
+	hookEvent.Message = formattedRedacted
+	hookEvent.Params = nil
+	a.callHooks(hookEvent)
 
 	for _, sink := range a.sinks {
 		sink.Write(e.Level, e.Iface, formattedRedacted)
@@ -208,6 +222,31 @@ func (a *agent) processEvent(e Event) {
 
 	// Record emitted
 	recordEmitted()
+}
+
+// boundParams returns a Params slice in which every string longer than
+// maxRedactLen has been truncated (with a "…<truncated N bytes>" marker) so the
+// downstream fmt.Sprintf in formatMessage cannot be forced into a multi-megabyte
+// allocation/concat by an attacker-controlled %s arg. The caller's slice is never
+// mutated: a fresh slice is allocated only when at least one param needs bounding;
+// otherwise the original slice is returned unchanged (no allocation, common case).
+func boundParams(params []interface{}) []interface{} {
+	for i, p := range params {
+		s, ok := p.(string)
+		if !ok || len(s) <= maxRedactLen {
+			continue
+		}
+		// At least one oversized string: copy, then bound from here on.
+		out := make([]interface{}, len(params))
+		copy(out, params)
+		for j := i; j < len(out); j++ {
+			if s, ok := out[j].(string); ok && len(s) > maxRedactLen {
+				out[j] = boundString(s)
+			}
+		}
+		return out
+	}
+	return params
 }
 
 // emitDedupeSummary emits a deduplication summary message.
@@ -226,13 +265,14 @@ func (a *agent) emitDedupeSummary() {
 
 	summaryRedacted := Redact(summary)
 
-	// Create summary event (redacted clone for hooks).
-	summaryEvent := RedactEvent(Event{
+	// Hand hooks the redacted summary string (Params already nil for summaries),
+	// matching processEvent: hooks never see a raw, reconstructable message.
+	summaryEvent := Event{
 		Level:   level,
 		Iface:   iface,
-		Message: summary,
+		Message: summaryRedacted,
 		Params:  nil,
-	})
+	}
 
 	// Call hooks
 	a.callHooks(summaryEvent)
