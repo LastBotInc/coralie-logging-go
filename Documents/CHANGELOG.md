@@ -4,6 +4,27 @@ All notable changes to coralie-logging-go will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- PII-redaction hardening (LAS-1488, Gemini review). Three fixes in
+  `pkg/clog/agent.go` `processEvent` + `pkg/clog/redact.go`:
+  - **Hook bypass:** hooks previously received the raw, unredacted `Event`
+    (`Message` + `Params` carry caller PII), so any hook forwarding to
+    Sentry/Datadog/webhooks leaked PII. New `Redactor.RedactEvent` / package-level
+    `RedactEvent` produce a redacted CLONE (scrub `Message` template + every
+    string-valued param; non-string params untouched; caller slice never mutated),
+    and `callHooks` now receives that clone.
+  - **Dedupe collision:** redaction ran before `dedupe.check`, so two distinct
+    callers on the same line collapsed to one redacted key and the second was
+    suppressed as a "duplicate". `processEvent` now dedupes on the RAW formatted
+    string and redacts only after the suppress check passes. Dedupe summary path
+    confirmed count-only and additionally routed through redaction defensively.
+  - **Payload-size DoS bound:** `Redactor.Redact` now truncates inputs over
+    `maxRedactLen` (64 KiB) with a `…<truncated N bytes>` marker before running the
+    regexes, capping per-call work from attacker-controlled fields (huge SIP
+    headers / malformed packets). PII near the start is still redacted.
+  - Added tests: hook-redaction, dedupe-preserves-distinct-callers,
+    DoS-bound truncation, `RedactEvent` clone semantics.
+
 ### Added
 - Centralized PII redaction (LAS-1488 layer #1): every formatted log message is
   scrubbed once in the agent's `processEvent` choke point before it reaches

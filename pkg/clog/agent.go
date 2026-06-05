@@ -165,34 +165,45 @@ func (a *agent) run() {
 }
 
 // processEvent processes a single log event.
+//
+// Ordering is security-critical (LAS-1488, Gemini review):
+//
+//  1. Format the message.
+//  2. Dedupe on the RAW formatted string. Two distinct callers that differ only
+//     in PII (participant_id=1111111@.. vs 2222222@..) must NOT collapse into one
+//     dedupe key, or the second caller is silently suppressed -- blinding ops to
+//     concurrent calls. So the dedupe key is computed BEFORE redaction.
+//  3. Only after the suppress check passes do we redact: once for the sinks
+//     (formattedRedacted) and once as a cloned Event for the hooks. Hooks may
+//     forward to Sentry/Datadog/webhooks and must never see raw Message+Params.
 func (a *agent) processEvent(e Event) {
-	// Format the message first
+	// Format the message first.
 	formatted := a.formatMessage(e)
 
-	// Centralized PII redaction (LAS-1488 layer #1). This is the single choke
-	// point where the final formatted message exists before it fans out to
-	// dedupe and every sink (console, file, BetterStack/Postgres). Redacting
-	// here once guarantees no sink (and no dedupe key) ever sees raw caller PII.
-	formatted = Redact(formatted)
-
-	// Check deduplication
+	// Check deduplication on the RAW (pre-redaction) formatted string so distinct
+	// callers are not collapsed by redaction tokens.
 	shouldSuppress, shouldEmitSummary := a.dedupe.check(e.Level, e.Iface, formatted)
 
-	// Emit summary if needed
+	// Emit summary if needed.
 	if shouldEmitSummary {
 		a.emitDedupeSummary()
 	}
 
-	// Suppress duplicate message
+	// Suppress duplicate message.
 	if shouldSuppress {
 		return
 	}
 
-	// Call hooks before processing
-	a.callHooks(e)
+	// Centralized PII redaction (LAS-1488 layer #1). Redact only after the dedupe
+	// suppress check, so neither the sinks nor the hooks ever see raw caller PII.
+	formattedRedacted := Redact(formatted)
+	redactedEvent := RedactEvent(e)
+
+	// Call hooks with the redacted Event clone before fanning out to sinks.
+	a.callHooks(redactedEvent)
 
 	for _, sink := range a.sinks {
-		sink.Write(e.Level, e.Iface, formatted)
+		sink.Write(e.Level, e.Iface, formattedRedacted)
 	}
 
 	// Record emitted
@@ -200,25 +211,34 @@ func (a *agent) processEvent(e Event) {
 }
 
 // emitDedupeSummary emits a deduplication summary message.
+//
+// The default summaryFormat ("last message repeated %d more times") is count-only
+// and never interpolates the stored raw message, so the raw formatted string held
+// in dedupe state is never written out. summaryFormat is configurable, though, so
+// we route the summary through the same redaction the normal path uses -- both the
+// sink string and the hook Event -- as a defensive guarantee that no future format
+// (or a misconfigured %s) can leak the in-memory raw message to a sink or hook.
 func (a *agent) emitDedupeSummary() {
 	level, iface, summary, ok := a.dedupe.flushSummary()
 	if !ok {
 		return
 	}
 
-	// Create summary event
-	summaryEvent := Event{
+	summaryRedacted := Redact(summary)
+
+	// Create summary event (redacted clone for hooks).
+	summaryEvent := RedactEvent(Event{
 		Level:   level,
 		Iface:   iface,
 		Message: summary,
 		Params:  nil,
-	}
+	})
 
 	// Call hooks
 	a.callHooks(summaryEvent)
 
 	for _, sink := range a.sinks {
-		sink.Write(level, iface, summary)
+		sink.Write(level, iface, summaryRedacted)
 	}
 
 	recordEmitted()
@@ -293,4 +313,3 @@ func (a *agent) stop(ctx context.Context) {
 		_ = a.audioWriter.Close()
 	}
 }
-

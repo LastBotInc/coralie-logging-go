@@ -14,6 +14,7 @@
 package clog
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -25,6 +26,15 @@ import (
 // once at package init. Any of "0", "false", "no", "off" (case-insensitive)
 // disables redaction; anything else (including unset) leaves it enabled.
 const redactEnvVar = "CORALIE_LOG_REDACT"
+
+// maxRedactLen bounds the input size the redactor will scan in a single call.
+// The four PII regexes run over the whole string in the single agent goroutine,
+// so an attacker-controlled field (a huge SIP header, a bloated User-Agent, a
+// malformed packet dumped on error) could otherwise stall the agent and cause
+// queue drops. Inputs longer than this are truncated to the limit (with a marker
+// appended) before the patterns run, capping the per-call work. 64 KiB is far
+// larger than any legitimate log line yet small enough to keep redaction cheap.
+const maxRedactLen = 64 * 1024
 
 // pattern is one ordered redaction rule: a precompiled regex and the literal
 // string that replaces every match. Compiled once at package init.
@@ -158,6 +168,15 @@ func (r *Redactor) Redact(s string) string {
 	if s == "" {
 		return s
 	}
+	// DoS bound: cap the work the regex engine does per call. An over-long input
+	// is truncated to maxRedactLen before scanning so a single attacker-controlled
+	// field cannot stall the agent goroutine. The dropped tail is summarized in a
+	// marker; PII near the start (where participant_id/conference_id live) is still
+	// redacted because the truncated prefix is what the patterns run over.
+	if len(s) > maxRedactLen {
+		dropped := len(s) - maxRedactLen
+		s = s[:maxRedactLen] + fmt.Sprintf("…<truncated %d bytes>", dropped)
+	}
 	for i := range r.patterns {
 		p := &r.patterns[i]
 		// ReplaceAllString returns the input unchanged (no new allocation) when
@@ -165,6 +184,32 @@ func (r *Redactor) Redact(s string) string {
 		s = p.re.ReplaceAllString(s, p.replacement)
 	}
 	return s
+}
+
+// RedactEvent returns a redacted CLONE of e, scrubbing PII from both the format
+// template (e.Message) and every string-valued param. The caller's Event and its
+// Params slice are never mutated: a fresh Params slice is allocated only when
+// there are params to copy. Non-string params (ints, structs, etc.) are carried
+// through untouched -- the measured PII (participant_id=<CID>@<ip>, emails, IPs)
+// always arrives as strings. The DoS length bound in Redact applies per field.
+//
+// This is what feeds hooks: hooks may forward to Sentry/Datadog/webhooks, so they
+// must never receive the raw Message+Params that carry caller PII.
+func (r *Redactor) RedactEvent(e Event) Event {
+	out := e
+	out.Message = r.Redact(e.Message)
+	if len(e.Params) > 0 {
+		params := make([]interface{}, len(e.Params))
+		for i, p := range e.Params {
+			if s, ok := p.(string); ok {
+				params[i] = r.Redact(s)
+			} else {
+				params[i] = p
+			}
+		}
+		out.Params = params
+	}
+	return out
 }
 
 // Redact scrubs PII from s using the package-level default redactor, honoring
@@ -178,6 +223,20 @@ func Redact(s string) string {
 	r := defaultRedactor
 	defaultRedactMu.RUnlock()
 	return r.Redact(s)
+}
+
+// RedactEvent returns a redacted clone of e using the package-level default
+// redactor, honoring the global enable toggle. When redaction is disabled it
+// returns e unchanged (no clone). This is the helper processEvent uses to scrub
+// the Event handed to hooks so they never see raw caller PII.
+func RedactEvent(e Event) Event {
+	if !redactEnabled.Load() {
+		return e
+	}
+	defaultRedactMu.RLock()
+	r := defaultRedactor
+	defaultRedactMu.RUnlock()
+	return r.RedactEvent(e)
 }
 
 // SetRedactionEnabled turns global PII redaction on or off at runtime. Redaction
