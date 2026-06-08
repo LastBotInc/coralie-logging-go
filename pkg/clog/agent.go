@@ -165,46 +165,112 @@ func (a *agent) run() {
 }
 
 // processEvent processes a single log event.
+//
+// Ordering is security-critical (LAS-1488, Gemini + CodeRabbit review):
+//
+//  1. Bound oversized string params BEFORE formatting. A multi-megabyte %s arg
+//     would otherwise force a giant fmt.Sprintf allocation/concat on the agent
+//     goroutine before any truncation. boundParams truncates such params (with a
+//     marker) up front, capping per-call work; Redact's own length guard stays as
+//     a backstop. The caller's Params slice is never mutated.
+//  2. Format the (bounded) message.
+//  3. Dedupe on the RAW formatted string. Two distinct callers that differ only
+//     in PII (participant_id=1111111@.. vs 2222222@..) must NOT collapse into one
+//     dedupe key, or the second caller is silently suppressed -- blinding ops to
+//     concurrent calls. So the dedupe key is computed BEFORE redaction.
+//  4. Only after the suppress check passes do we redact the formatted string once.
+//     Hooks receive an Event whose Message is that single redacted string with
+//     Params cleared -- so a hook that re-formats or serializes the Event cannot
+//     recombine PII split across Message+Params (e.g. "%s@%s" + ["alice","x.com"]).
+//     The same redacted string feeds every sink.
 func (a *agent) processEvent(e Event) {
-	// Format the message first
+	// Bound oversized string params before formatting (DoS guard, pre-Sprintf).
+	e.Params = boundParams(e.Params)
+
+	// Format the (bounded) message.
 	formatted := a.formatMessage(e)
 
-	// Check deduplication
+	// Check deduplication on the RAW (pre-redaction) formatted string so distinct
+	// callers are not collapsed by redaction tokens.
 	shouldSuppress, shouldEmitSummary := a.dedupe.check(e.Level, e.Iface, formatted)
 
-	// Emit summary if needed
+	// Emit summary if needed.
 	if shouldEmitSummary {
 		a.emitDedupeSummary()
 	}
 
-	// Suppress duplicate message
+	// Suppress duplicate message.
 	if shouldSuppress {
 		return
 	}
 
-	// Call hooks before processing
-	a.callHooks(e)
+	// Centralized PII redaction (LAS-1488 layer #1). Redact the formatted string
+	// once, only after the dedupe suppress check, so neither the sinks nor the
+	// hooks ever see raw caller PII.
+	formattedRedacted := Redact(formatted)
+
+	// Hand hooks the redacted formatted string with Params cleared, so a hook that
+	// re-formats/serializes the Event cannot reconstruct PII from the fragments.
+	hookEvent := e
+	hookEvent.Message = formattedRedacted
+	hookEvent.Params = nil
+	a.callHooks(hookEvent)
 
 	for _, sink := range a.sinks {
-		sink.Write(e.Level, e.Iface, formatted)
+		sink.Write(e.Level, e.Iface, formattedRedacted)
 	}
 
 	// Record emitted
 	recordEmitted()
 }
 
+// boundParams returns a Params slice in which every string longer than
+// maxRedactLen has been truncated (with a "…<truncated N bytes>" marker) so the
+// downstream fmt.Sprintf in formatMessage cannot be forced into a multi-megabyte
+// allocation/concat by an attacker-controlled %s arg. The caller's slice is never
+// mutated: a fresh slice is allocated only when at least one param needs bounding;
+// otherwise the original slice is returned unchanged (no allocation, common case).
+func boundParams(params []interface{}) []interface{} {
+	for i, p := range params {
+		s, ok := p.(string)
+		if !ok || len(s) <= maxRedactLen {
+			continue
+		}
+		// At least one oversized string: copy, then bound from here on.
+		out := make([]interface{}, len(params))
+		copy(out, params)
+		for j := i; j < len(out); j++ {
+			if s, ok := out[j].(string); ok && len(s) > maxRedactLen {
+				out[j] = boundString(s)
+			}
+		}
+		return out
+	}
+	return params
+}
+
 // emitDedupeSummary emits a deduplication summary message.
+//
+// The default summaryFormat ("last message repeated %d more times") is count-only
+// and never interpolates the stored raw message, so the raw formatted string held
+// in dedupe state is never written out. summaryFormat is configurable, though, so
+// we route the summary through the same redaction the normal path uses -- both the
+// sink string and the hook Event -- as a defensive guarantee that no future format
+// (or a misconfigured %s) can leak the in-memory raw message to a sink or hook.
 func (a *agent) emitDedupeSummary() {
 	level, iface, summary, ok := a.dedupe.flushSummary()
 	if !ok {
 		return
 	}
 
-	// Create summary event
+	summaryRedacted := Redact(summary)
+
+	// Hand hooks the redacted summary string (Params already nil for summaries),
+	// matching processEvent: hooks never see a raw, reconstructable message.
 	summaryEvent := Event{
 		Level:   level,
 		Iface:   iface,
-		Message: summary,
+		Message: summaryRedacted,
 		Params:  nil,
 	}
 
@@ -212,7 +278,7 @@ func (a *agent) emitDedupeSummary() {
 	a.callHooks(summaryEvent)
 
 	for _, sink := range a.sinks {
-		sink.Write(level, iface, summary)
+		sink.Write(level, iface, summaryRedacted)
 	}
 
 	recordEmitted()
@@ -287,4 +353,3 @@ func (a *agent) stop(ctx context.Context) {
 		_ = a.audioWriter.Close()
 	}
 }
-
