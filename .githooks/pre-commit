@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# pre-commit — block .env / secret-shaped commits.
+#
+# Recurrence prevention for the 2026-06-17 incident:
+# a tracked .env in coralie-gemini-worker exposed four live credentials
+# (GOOGLE_API_KEY, ELASTIC_CLOUD_APIKEY, PRESENCE_SEED_PHRASE,
+# LASTBOT_VOICE_THREAD_AUTH) before .gitignore was added — but .gitignore
+# is inert for already-tracked files, so the file slipped through.
+#
+# This hook fails CLOSED on three signals in the staged set:
+#   1. NEW files (--diff-filter=A) named .env / .env.<env> (except .env.example).
+#      Modifying an already-tracked .env.dev or .env.staging passes the
+#      filename check — the content check below still catches real secrets.
+#   2. NEW files (--diff-filter=A) matching common secret shapes
+#      (*.pem, *.key, *_credentials.json, ...).
+#   3. Added lines (diff `+` rows in added or modified files) of the shape
+#      SENSITIVE_VAR=<>=20 char value. Universal safety net regardless of
+#      filename — catches secrets sneaking into CLAUDE.md, README.md,
+#      shell scripts, K8s manifests, etc.
+#
+# Activate this hook (one-time, per clone) with:
+#     git config core.hooksPath .githooks
+# CI runs the same checks as a fail-closed backstop in case the hook
+# is missing or bypassed. Do NOT use `git commit --no-verify` to skip it.
+
+set -euo pipefail
+
+# Staged additions only (NEW files). Used by filename checks — modifying an
+# already-tracked file should not retroactively trip on its name.
+staged_added() {
+  git diff --cached --name-only --diff-filter=A
+}
+
+# Staged additions or modifications. Used by the content check.
+staged_files() {
+  git diff --cached --name-only --diff-filter=AM
+}
+
+fail=0
+red() { printf '\033[31m%s\033[0m\n' "$*" 2>/dev/null || printf '%s\n' "$*"; }
+
+# --- 1. .env filenames ----------------------------------------------------
+ENV_RE='(^|/)\.env(\.[^/]+)?$'
+EXAMPLE_RE='\.env\.example$'
+
+env_hits="$(staged_added | grep -E "$ENV_RE" | grep -vE "$EXAMPLE_RE" || true)"
+if [ -n "$env_hits" ]; then
+  red "ERROR: new .env file(s) staged for commit:"
+  printf '  %s\n' $env_hits
+  echo "       .env files contain secrets and must never be committed."
+  echo "       Use .env.example for templates. To untrack an existing one:"
+  echo "         git rm --cached <file> && git commit"
+  fail=1
+fi
+
+# --- 2. other secret-shaped filenames ------------------------------------
+# Each pattern is an extended-regex tested against the staged path list.
+SECRET_PATTERNS=(
+  '\.pem$'                            # private keys / certs
+  '\.key$'                            # private keys
+  '_credentials\.json$'               # GCP / service account keys
+  '(^|/)gcp-key\.json$'               # common GCP key filename
+  '\.p12$'                            # PKCS12 bundles
+  '(^|/)id_(rsa|ed25519|ecdsa|dsa)$'  # SSH private keys
+  '_token$'                           # bearer token files
+  '(^|/)secrets\.ya?ml$'              # Helm/K8s secrets manifests
+)
+for pat in "${SECRET_PATTERNS[@]}"; do
+  hits="$(staged_added | grep -E "$pat" || true)"
+  if [ -n "$hits" ]; then
+    red "ERROR: new secret-shaped file matching /$pat/ staged for commit:"
+    printf '  %s\n' $hits
+    fail=1
+  fi
+done
+
+# --- 3. sensitive KEY=value shapes in the staged diff --------------------
+# We only inspect text files (binary is skipped by `git diff` automatically
+# when there are no -a/--text flags). We restrict to *added* lines (the `+`
+# rows) so we don't flag existing content the commit happens to neighbor.
+SENSITIVE_VARS='OPENAI|ANTHROPIC|GOOGLE|GEMINI|AWS|GCP|AZURE|LASTBOT|ELASTIC|PRESENCE_SEED|GROK|XAI|TWILIO|STRIPE|GITHUB|HUGGINGFACE|HF_TOKEN|SLACK|DISCORD'
+
+files="$(staged_files)"
+if [ -n "$files" ]; then
+  # `git diff --cached` already restricts to staged changes; we narrow to
+  # added lines (start with `+` but not `+++` header) and look for
+  # SENSITIVE_VAR=<>=20-char alnum value. Length floor avoids flagging
+  # placeholders like `OPENAI_API_KEY=changeme` or empty assignments.
+  diff_hits="$(
+    git diff --cached --no-color --diff-filter=AM -U0 -- $files 2>/dev/null \
+      | grep -E "^\+($SENSITIVE_VARS)[A-Z0-9_]*[[:space:]]*=[[:space:]]*['\"]?[A-Za-z0-9_./+=:-]{20,}['\"]?[[:space:]]*$" \
+      || true
+  )"
+  if [ -n "$diff_hits" ]; then
+    red "ERROR: sensitive KEY=value pattern detected in staged diff:"
+    printf '  %s\n' "$diff_hits"
+    echo "       Use placeholders (e.g. CHANGEME) in .env.example or move"
+    echo "       the value to a gitignored .env."
+    fail=1
+  fi
+fi
+
+# --- final ---------------------------------------------------------------
+if [ "$fail" -ne 0 ]; then
+  echo
+  echo "Commit blocked by .githooks/pre-commit (Coralie secret-guard)."
+  echo "  Reference: docs/policies/SECURITY_HYGIENE.md in the umbrella repo."
+  echo "  Recurrence-prevention for incident 2026-06-17 (coralie-gemini-worker .env leak)."
+  exit 1
+fi
+
+exit 0
