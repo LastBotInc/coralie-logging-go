@@ -4,6 +4,8 @@ All notable changes to coralie-logging-go will be documented in this file.
 
 ## [Unreleased]
 
+## v0.2.0 (2026-06-08)
+
 ### Security
 - PII-redaction hardening (LAS-1488, Gemini + CodeRabbit review). Fixes in
   `pkg/clog/agent.go` `processEvent` + `pkg/clog/redact.go`:
