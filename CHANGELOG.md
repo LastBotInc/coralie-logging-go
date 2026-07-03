@@ -1,11 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
 ## v0.2.0 (2026-06-08)
 
 Centralized PII redaction layer (LAS-1488 layer #1).
 
 - `pkg/clog` redaction middleware: scrub each formatted log message once in the
-  agent `processEvent` choke point before dedupe + all sinks. Ordered precompiled
+  agent `processEvent` choke point, after the dedupe/suppress check and ahead of
+  all sinks. Ordered precompiled
   `Redactor`: email → `<email>`, IPv4 (optional `:port`, incl. media IPs) → `<ip>`,
   `+E.164` → `<phone>`, and the `<CID>@<ip>` / `<DID>@<ip>` participant/conference-id
   phone form → `<phone>@`. Default-on; `CORALIE_LOG_REDACT=0/false/no/off` disables.
