@@ -4,7 +4,7 @@
 
 | Tool | Version | Check |
 |------|---------|-------|
-| Go | 1.26.3+ | `go version` |
+| Go | 1.26.5+ | `go version` |
 | Git | any | `git --version` |
 | Make | any | `make --version` |
 
