@@ -22,7 +22,7 @@ func main() {
     
     clog.Info("Application", "Server starting on port 8080")
     clog.Success("Application", "Server started successfully")
-    clog.Error("Application", "Connection failed: %v", err)
+    clog.Error("Application", "Connection failed")
 }
 ```
 
@@ -42,6 +42,21 @@ go get github.com/LastBotInc/coralie-logging-go
 - **Graceful shutdown**: Drains queue, flushes all sinks, handles signals
 - **Hooks**: Global and per-level hooks for custom processing
 - **Performance**: Bounded queues, drop policies, minimal allocations
+
+## Environment Variables
+
+The library reads the following environment variables at initialization time:
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `CORALIE_LOG_REDACT` | (unset, enabled) | Controls PII redaction. Set to `0`, `false`, `no`, or `off` (case-insensitive) to disable redaction. All other values (including unset) enable it. |
+| `NO_COLOR` | (unset) | If set to any non-empty value, disables color output in console logging (overrides terminal color detection). |
+| `COLORTERM` | (unset) | If set to any non-empty value, enables color output in console logging even if color auto-detection fails. |
+
+**Notes**:
+- `CORALIE_LOG_REDACT` is read once at `clog.Init()` time but can be changed at runtime via `clog.SetRedactionEnabled()`.
+- `NO_COLOR` and `COLORTERM` control terminal color support detection in `SupportsColor()`.
+- See [CONFIGURATION.md](Documents/CONFIGURATION.md) for details on PII redaction patterns and how to disable/customize them.
 
 ## Examples
 
