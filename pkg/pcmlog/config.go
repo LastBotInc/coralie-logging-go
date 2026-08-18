@@ -10,4 +10,3 @@ type Config struct {
 	OutputDir       string
 	FilenamePattern string
 }
-

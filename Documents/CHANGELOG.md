@@ -2,6 +2,12 @@
 
 All notable changes to coralie-logging-go will be documented in this file.
 
+## 2026-08-18
+
+- `pcmlog`: `Config.FilenamePattern` is now honored (previously silently ignored — every writer collapsed onto `audio_<timestamp>.wav`, so two writers created in the same second in one directory truncated each other). Supported tokens: `%Y %m %d %H %M %S %N`. Callers embedding an identity in the pattern (e.g. `mixer_<conference>_%Y%m%d_%H%M%S.wav`) now get distinct files. (LAS-2883)
+- `pcmlog`: new `Writer.Path()` accessor returning the on-disk file path (needed by the conference-service recording uploader). (LAS-2883)
+
+
 ## [Unreleased]
 
 ## v0.2.0 (2026-06-08)
