@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
 
 // Writer handles writing PCM16 frames to WAV files.
 type Writer struct {
-	cfg       Config
-	file      *os.File
-	dataSize  int64
-	mu        sync.Mutex
-	closed    bool
+	cfg      Config
+	file     *os.File
+	dataSize int64
+	mu       sync.Mutex
+	closed   bool
 }
 
 // NewWriter creates a new WAV file writer.
@@ -30,11 +31,16 @@ func NewWriter(cfg Config) (*Writer, error) {
 		return nil, fmt.Errorf("failed to create audio log directory: %w", err)
 	}
 
-	// Generate filename
+	// Generate filename. FilenamePattern is HONORED (LAS-2883 fix): it was
+	// previously ignored, which collapsed every caller onto the same
+	// audio_<timestamp>.wav name — two writers created in the same second in
+	// one directory silently O_TRUNC'd each other. Callers embed their own
+	// identity (e.g. a conference id) in the pattern precisely to prevent
+	// that. Supported strftime-style tokens: %Y %m %d %H %M %S %N (nanos).
 	now := time.Now()
 	var filename string
 	if cfg.FilenamePattern != "" {
-		filename = fmt.Sprintf("audio_%s.wav", now.Format("20060102_150405"))
+		filename = expandFilenamePattern(cfg.FilenamePattern, now)
 	} else {
 		filename = now.Format("20060102_150405.wav")
 	}
@@ -59,6 +65,14 @@ func NewWriter(cfg Config) (*Writer, error) {
 	}
 
 	return w, nil
+}
+
+// Path returns the writer's on-disk file path.
+func (w *Writer) Path() string {
+	if w == nil || w.file == nil {
+		return ""
+	}
+	return w.file.Name()
 }
 
 // writeHeader writes the WAV file header.
@@ -131,7 +145,7 @@ func (w *Writer) updateHeader() error {
 
 	// Calculate file size (data size + header size)
 	// Header is typically 44 bytes, but we'll calculate it
-	headerSize := int64(44) // Standard WAV header size
+	headerSize := int64(44)                 // Standard WAV header size
 	fileSize := headerSize + w.dataSize - 8 // -8 because RIFF size doesn't include first 8 bytes
 
 	// Update RIFF chunk size (at offset 4)
@@ -238,4 +252,20 @@ func (w *Writer) Close() error {
 	}
 
 	return w.file.Close()
+}
+
+// expandFilenamePattern substitutes the strftime-style tokens pcmlog
+// documents for Config.FilenamePattern. Unknown %-sequences pass through
+// verbatim.
+func expandFilenamePattern(pattern string, now time.Time) string {
+	replacer := strings.NewReplacer(
+		"%Y", now.Format("2006"),
+		"%m", now.Format("01"),
+		"%d", now.Format("02"),
+		"%H", now.Format("15"),
+		"%M", now.Format("04"),
+		"%S", now.Format("05"),
+		"%N", fmt.Sprintf("%09d", now.Nanosecond()),
+	)
+	return replacer.Replace(pattern)
 }

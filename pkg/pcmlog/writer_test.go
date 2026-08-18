@@ -3,6 +3,7 @@ package pcmlog
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -129,7 +130,45 @@ func TestAudioWriter_Disabled(t *testing.T) {
 	}
 }
 
+func TestWriterHonorsFilenamePatternAndPath(t *testing.T) {
+	dir := t.TempDir()
+	w, err := NewWriter(Config{
+		Enabled:         true,
+		SampleRate:      24000,
+		Channels:        1,
+		BitsPerSample:   16,
+		OutputDir:       dir,
+		FilenamePattern: "mixer_conf-a_%Y%m%d_%H%M%S.wav",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := w.Path()
+	if path == "" {
+		t.Fatal("Path() returned empty")
+	}
+	base := filepath.Base(path)
+	if !strings.HasPrefix(base, "mixer_conf-a_") || !strings.HasSuffix(base, ".wav") {
+		t.Fatalf("pattern not honored: %q", base)
+	}
+	if strings.ContainsAny(base, "%") {
+		t.Fatalf("unexpanded token in %q", base)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 
-
-
-
+	// Two writers with DIFFERENT identities in the same second must not
+	// collide (the LAS-2883 cross-conference clobber).
+	w2, err := NewWriter(Config{
+		Enabled: true, SampleRate: 24000, Channels: 1, BitsPerSample: 16,
+		OutputDir: dir, FilenamePattern: "mixer_conf-b_%Y%m%d_%H%M%S.wav",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w2.Close()
+	if w2.Path() == path {
+		t.Fatalf("distinct patterns produced the same path %q", path)
+	}
+}
