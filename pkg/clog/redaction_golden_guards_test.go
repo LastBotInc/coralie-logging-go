@@ -3,6 +3,7 @@ package clog
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -56,6 +57,41 @@ func TestGoldenGuardsRejectSecretFullInput(t *testing.T) {
 	}
 }
 
+func TestGoldenGuardsRejectSecretSpecificRegressions(t *testing.T) {
+	var corpus map[string]any
+	readFixture(t, "golden_corpus.json", &corpus)
+	for _, test := range []struct {
+		name, want string
+		edit       func(map[string]any)
+	}{
+		{"mixed URL/email full redacts ordinary email", "secret full output changed", func(c map[string]any) {
+			for _, value := range array(t, c["cases"]) {
+				caseValue := object(t, value)
+				if caseValue["id"] == "net.url_with_credentials_and_query_email" {
+					object(t, caseValue["expected"])["full"] = "Callback https://[SECRET]@api.example.com/v1?email=[EMAIL] failed"
+				}
+			}
+		}},
+		{"secret category removed", "secret classification changed", func(c map[string]any) {
+			for _, value := range array(t, c["cases"]) {
+				caseValue := object(t, value)
+				if caseValue["id"] == "secret.api_key" {
+					caseValue["categories"] = []any{"email"}
+				}
+			}
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			clone := clonedJSON(t, corpus)
+			test.edit(clone)
+			err := validateSecretFull(array(t, clone["cases"]))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("secret regression error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
 func validateSecretFull(cases []any) error {
 	want := map[string]string{
 		"secret.api_key": "The integration key is [SECRET]", "secret.bearer_token": "Authorization: Bearer [SECRET]",
@@ -69,11 +105,17 @@ func validateSecretFull(cases []any) error {
 		}
 		id, input := kase["id"].(string), kase["input"].(string)
 		full := objectNoTest(kase["expected"])["full"]
-		if hasSecretCategory(kase["categories"]) {
-			if want[id] != full || input == full {
+		wantFull, isSecret := want[id]
+		if isSecret {
+			if !hasSecretCategory(kase["categories"]) {
+				return fmt.Errorf("%s secret classification changed", id)
+			}
+			if wantFull != full || input == full {
 				return fmt.Errorf("%s secret full output changed", id)
 			}
 			seen[id] = true
+		} else if hasSecretCategory(kase["categories"]) {
+			return fmt.Errorf("%s secret classification changed", id)
 		} else if input != full {
 			return fmt.Errorf("%s non-secret full output changed", id)
 		}

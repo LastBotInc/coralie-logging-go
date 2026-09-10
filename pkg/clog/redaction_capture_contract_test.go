@@ -4,6 +4,7 @@ package clog
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -35,15 +36,29 @@ func TestCaptureContractSchemaAndPolicyPins(t *testing.T) {
 	}
 	vectors := vectorMap(t, values)
 	for id, vector := range vectors {
-		assertKeys(t, vector, "context", "expected", "id", "input", "owner_ticket")
-		expected := object(t, vector["expected"])
-		assertKeys(t, expected, "action", "effective_level", "error_code", "output")
-		if _, ok := object(t, expected["output"])["capture_level"]; !ok {
-			t.Fatalf("%s omits capture level", id)
+		if err := validateCaptureVectorShape(id, vector); err != nil {
+			t.Fatal(err)
 		}
 	}
 	assertSecurityVectors(t, vectors)
 	assertPermissionVectors(t, vectors)
+}
+
+func validateCaptureVectorShape(id string, vector map[string]any) error {
+	if !sameKeys(vector, []string{"context", "expected", "id", "input", "owner_ticket"}) {
+		return fmt.Errorf("%s has invalid keys", id)
+	}
+	if _, ok := vector["owner_ticket"].(string); !ok {
+		return fmt.Errorf("%s owner_ticket is not a string", id)
+	}
+	expected := objectNoTest(vector["expected"])
+	if expected == nil || !sameKeys(expected, []string{"action", "effective_level", "error_code", "output"}) {
+		return fmt.Errorf("%s has invalid expected shape", id)
+	}
+	if _, ok := objectNoTest(expected["output"])["capture_level"]; !ok {
+		return fmt.Errorf("%s omits capture level", id)
+	}
+	return nil
 }
 
 func TestCaptureBoundaryRecipes(t *testing.T) {

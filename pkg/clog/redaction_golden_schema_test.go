@@ -37,6 +37,7 @@ func TestGoldenCorpusGuardsRejectSchemaMutations(t *testing.T) {
 		{"negative redaction", func(c map[string]any) {
 			object(t, object(t, array(t, c["cases"])[56])["expected"])["redacted"] = "changed"
 		}},
+		{"notes number", func(c map[string]any) { object(t, array(t, c["cases"])[0])["notes"] = float64(1) }},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			clone := clonedJSON(t, corpus)
@@ -84,6 +85,11 @@ func validateCaseShape(kase map[string]any, kind string) error {
 	}
 	if _, ok := kase["input"].(string); !ok {
 		return fmt.Errorf("input is not a string")
+	}
+	if notes := kase["notes"]; notes != nil {
+		if _, ok := notes.(string); !ok {
+			return fmt.Errorf("notes is not a string or null")
+		}
 	}
 	if locale, ok := kase["locale"].(string); !ok || !contains([]string{"fi", "sv", "en", "da", "et", "pl", "mixed"}, locale) {
 		return fmt.Errorf("invalid locale")

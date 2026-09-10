@@ -11,7 +11,10 @@ func TestCaptureContractMatchesSourceFixedVectors(t *testing.T) {
 	for id, vector := range sourceContractVectors() {
 		want[id] = vector
 	}
-	if len(want) != 26 {
+	for id, vector := range sourceBoundaryVectors() {
+		want[id] = vector
+	}
+	if len(want) != len(expectedContractIDs) {
 		t.Fatalf("source-fixed vector count = %d", len(want))
 	}
 	for id := range want {

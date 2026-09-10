@@ -14,7 +14,10 @@ func sourceFixedVector(id string) (captureVectorExpectation, bool) {
 	if vector, ok := sourceSecurityVectors()[id]; ok {
 		return vector, true
 	}
-	vector, ok := sourceContractVectors()[id]
+	if vector, ok := sourceContractVectors()[id]; ok {
+		return vector, true
+	}
+	vector, ok := sourceBoundaryVectors()[id]
 	return vector, ok
 }
 

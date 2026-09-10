@@ -65,6 +65,38 @@ func TestCaptureBoundaryGuardRejectsSwappedReason(t *testing.T) {
 	}
 }
 
+func TestCaptureContractGuardRejectsNonStringOwnerTicket(t *testing.T) {
+	var contract map[string]any
+	readFixture(t, "capture_contract.json", &contract)
+	vector := clonedJSON(t, vectorMap(t, array(t, contract["vectors"]))["bounds.field.at"])
+	vector["owner_ticket"] = float64(3489)
+	if validateCaptureVectorShape("bounds.field.at", vector) == nil {
+		t.Fatal("non-string owner ticket was accepted")
+	}
+}
+
+func TestCaptureBoundaryGuardsRejectSourceFixedDrift(t *testing.T) {
+	var contract map[string]any
+	readFixture(t, "capture_contract.json", &contract)
+	vectors := vectorMap(t, array(t, contract["vectors"]))
+	for _, test := range []struct {
+		name string
+		edit func(map[string]any)
+	}{
+		{"requested level", func(v map[string]any) { object(t, v["context"])["requested_level"] = "full" }},
+		{"authorization", func(v map[string]any) { object(t, v["context"])["contract_authorized"] = false }},
+		{"effective level", func(v map[string]any) { object(t, v["expected"])["effective_level"] = "full" }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			vector := clonedJSON(t, vectors["bounds.field.at"])
+			test.edit(vector)
+			if validateSourceFixedVector("bounds.field.at", vector) == nil {
+				t.Fatal("source-fixed boundary drift was accepted")
+			}
+		})
+	}
+}
+
 func boundaryMeasurementMatches(id string, payload any) bool {
 	if id != "bounds.field.at" {
 		return false
