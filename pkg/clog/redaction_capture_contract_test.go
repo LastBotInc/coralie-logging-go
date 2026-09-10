@@ -75,40 +75,18 @@ func TestCaptureBoundaryRecipes(t *testing.T) {
 
 func assertSecurityVectors(t *testing.T, vectors map[string]map[string]any) {
 	t.Helper()
-	want := map[string][3]any{
-		"shape.unknown_email_key":                      {"redacted", "drop_unknown_field", "capture_unknown_schema_field"},
-		"shape.unknown_token_key":                      {"redacted", "drop_unknown_field", "capture_unknown_schema_field"},
-		"shape.nested_unknown_fields":                  {"redacted", "drop_unknown_field", "capture_unknown_schema_field"},
-		"shape.malformed_json":                         {"redacted", "drop_payload_field", "invalid_structure"},
-		"shape.wrong_type":                             {"redacted", "drop_payload_field", "invalid_structure"},
-		"shape.unknown_secret":                         {"full", "drop_payload_field", "unsafe_shape"},
-		"shape.metadata_stamped_raw_payload":           {"metadata", "reject_record", "capture_envelope_level_mismatch"},
-		"provenance.synthetic_metadata_system_ceiling": {"metadata", "drop_payload", "capture_ceiling_applied"},
-		"provenance.synthetic_real_connector":          {"metadata", "drop_payload", "capture_untrusted_synthetic_provenance"},
-		"provenance.unknown_classification":            {"metadata", "drop_payload", "capture_unknown_traffic_classification"},
-		"provenance.replay_cannot_raise":               {"redacted", "allow_redacted_payload", nil},
-		"provenance.billing_usage_without_payload":     {"metadata", "allow_metadata", nil},
-		"provenance.external_session_id_omitted":       {"redacted", "drop_unknown_field", "capture_external_identifier_omitted"},
-	}
-	for id, expected := range want {
-		vector := vectors[id]
-		if err := validatePolicyVector(id, vector); err != nil {
-			t.Fatalf("%s: %v", id, err)
-		}
-		actual := object(t, vector["expected"])
-		if [3]any{actual["effective_level"], actual["action"], actual["error_code"]} != expected {
-			t.Fatalf("%s result drifted: %v", id, actual)
+	for id := range sourceSecurityVectors() {
+		if err := validateSourceFixedVector(id, vectors[id]); err != nil {
+			t.Fatal(err)
 		}
 	}
 }
 
 func assertPermissionVectors(t *testing.T, vectors map[string]map[string]any) {
 	t.Helper()
-	for _, id := range expectedContractIDs {
-		if len(id) >= 9 && id[:9] == "contract." {
-			if err := validatePolicyVector(id, vectors[id]); err != nil {
-				t.Fatalf("%s: %v", id, err)
-			}
+	for id := range sourceContractVectors() {
+		if err := validateSourceFixedVector(id, vectors[id]); err != nil {
+			t.Fatal(err)
 		}
 	}
 }

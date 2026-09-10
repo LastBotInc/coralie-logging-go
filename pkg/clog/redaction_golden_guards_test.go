@@ -17,15 +17,25 @@ func TestGoldenGuardsRejectWeakenedPartitions(t *testing.T) {
 		sup  []string
 		gap  []string
 	}{
-		{"missing output", outputs, expectedCorpusIDs[:69], []string{}},
-		{"duplicate partition", outputs, []string{"fi.hetu.free_text"}, []string{"fi.hetu.free_text"}},
-		{"extra baseline", map[string]string{"extra": "x"}, []string{"extra"}, []string{}},
+		{"deleted partition member", outputs, expectedCorpusIDs[:69], []string{}},
+		{"duplicate partition member", outputs, append(append([]string{}, expectedCorpusIDs...), "fi.hetu.free_text"), []string{}},
+		{"extra baseline", map[string]string{"extra": "x"}, expectedCorpusIDs, []string{}},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			if validatePartition(mutation.ok, mutation.sup, mutation.gap) == nil {
 				t.Fatal("mutation was accepted")
 			}
 		})
+	}
+}
+
+func TestGoldenGuardsRejectWrongProvenancePath(t *testing.T) {
+	var provenance map[string]any
+	readFixture(t, "provenance.json", &provenance)
+	clone := clonedJSON(t, provenance)
+	object(t, object(t, clone["fixtures"])["golden_corpus"])["path"] = "test/fixtures/files/redaction/not-the-source.json"
+	if validProvenance(clone) {
+		t.Fatal("wrong Rails provenance path was accepted")
 	}
 }
 

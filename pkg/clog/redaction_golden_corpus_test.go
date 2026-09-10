@@ -10,6 +10,9 @@ func TestRedactionFixtureProvenance(t *testing.T) {
 	var provenance map[string]any
 	readFixture(t, "provenance.json", &provenance)
 	assertKeys(t, provenance, "fixtures", "rails_commit", "rails_repository")
+	if !validProvenance(provenance) {
+		t.Fatal("provenance is not source-fixed")
+	}
 	if got := provenance["rails_repository"]; got != "LastBotInc/lastbot" {
 		t.Fatalf("rails_repository = %v", got)
 	}
@@ -17,15 +20,16 @@ func TestRedactionFixtureProvenance(t *testing.T) {
 		t.Fatalf("rails_commit = %v", got)
 	}
 	fixtures := object(t, provenance["fixtures"])
+	assertKeys(t, fixtures, "capture_contract", "golden_corpus")
 	for _, fixture := range []struct {
-		name, file, version, digest string
+		name, file, path, version, digest string
 	}{
-		{"golden_corpus", "golden_corpus.json", "2026-09-10.2", "d9d5a426043099e78630c798f7893648c4c23b9d101becbed59bf80a71f82f6d"},
-		{"capture_contract", "capture_contract.json", "2026-09-10.4", "c45694d7fb89cc1c4f0248e5e8df6584d973dbe7d6c04a632308df975f010216"},
+		{"golden_corpus", "golden_corpus.json", "test/fixtures/files/redaction/golden_corpus.json", "2026-09-10.2", "d9d5a426043099e78630c798f7893648c4c23b9d101becbed59bf80a71f82f6d"},
+		{"capture_contract", "capture_contract.json", "test/fixtures/files/redaction/capture_contract.json", "2026-09-10.4", "c45694d7fb89cc1c4f0248e5e8df6584d973dbe7d6c04a632308df975f010216"},
 	} {
 		entry := object(t, fixtures[fixture.name])
 		assertKeys(t, entry, "path", "sha256", "version")
-		if entry["version"] != fixture.version || entry["sha256"] != fixture.digest {
+		if entry["path"] != fixture.path || entry["version"] != fixture.version || entry["sha256"] != fixture.digest {
 			t.Fatalf("%s provenance = %v", fixture.name, entry)
 		}
 		var ignored any
@@ -43,6 +47,9 @@ func TestGoldenCorpusSchemaAndClassification(t *testing.T) {
 		t.Fatalf("unexpected corpus version: %v / %v", corpus["schema_version"], corpus["corpus_version"])
 	}
 	cases := array(t, corpus["cases"])
+	if err := validateCorpusCases(cases); err != nil {
+		t.Fatal(err)
+	}
 	ids, categories, locales, capabilities := make([]string, 0, len(cases)), []string{}, []string{}, []string{}
 	for _, value := range cases {
 		kase := object(t, value)
@@ -149,7 +156,10 @@ func outputByID(t *testing.T, entries []any) map[string]string {
 }
 
 func validatePartition(outputs map[string]string, supported, gaps []string) error {
-	if len(outputs) != len(expectedCorpusIDs) || len(unique(supported))+len(unique(gaps)) != len(expectedCorpusIDs) {
+	if len(supported) != len(unique(supported)) || len(gaps) != len(unique(gaps)) {
+		return require(false, "partition has duplicate members")
+	}
+	if len(outputs) != len(expectedCorpusIDs) || len(supported)+len(gaps) != len(expectedCorpusIDs) {
 		return require(false, "partition is not exhaustive")
 	}
 	for _, id := range expectedCorpusIDs {

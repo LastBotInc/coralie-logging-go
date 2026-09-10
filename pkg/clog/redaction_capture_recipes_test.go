@@ -80,7 +80,7 @@ func assertBoundaryResult(t *testing.T, id string, expected map[string]any, payl
 		}
 		return
 	}
-	if expected["action"] != "drop_payload_field" || !contains([]string{"field_bytes_exceeded", "depth_exceeded", "members_exceeded"}, stringValue(t, expected["error_code"])) {
+	if expected["action"] != "drop_payload_field" || validateBoundaryReason(id, expected) != nil {
 		t.Fatalf("%s field drop changed: %v", id, expected)
 	}
 	if !equalMap(output, map[string]any{"capture_level": "redacted", "payload": map[string]any{}}) {
