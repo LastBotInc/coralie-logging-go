@@ -10,6 +10,14 @@ All notable changes to coralie-logging-go will be documented in this file.
 
 ## [Unreleased]
 
+## 2026-09-10
+
+- Added LAS-3488 test-only governance fixtures: byte-pinned Rails golden corpus
+  and capture contract, native `NewDefaultRedactor` baseline outputs with explicit
+  supported/gap partitions, strict schema and capture-boundary recipe checks, and
+  mutation guards for policy fixture regressions. This does not change the
+  redactor, logging runtime behavior, dependencies, or capture enforcement.
+
 ## v0.2.0 (2026-06-08)
 
 ### Security
@@ -76,4 +84,3 @@ All notable changes to coralie-logging-go will be documented in this file.
 - PCM16 audio logging to WAV files
 - Demo CLI application demonstrating all features
 - Fyne audio monitor example application with separate module
-

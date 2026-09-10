@@ -1,0 +1,88 @@
+// Package clog: mutation guards for LAS-3488 native redactor baseline tests.
+package clog
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestGoldenGuardsRejectWeakenedPartitions(t *testing.T) {
+	outputs := map[string]string{}
+	for _, id := range expectedCorpusIDs {
+		outputs[id] = id
+	}
+	for _, mutation := range []struct {
+		name string
+		ok   map[string]string
+		sup  []string
+		gap  []string
+	}{
+		{"missing output", outputs, expectedCorpusIDs[:69], []string{}},
+		{"duplicate partition", outputs, []string{"fi.hetu.free_text"}, []string{"fi.hetu.free_text"}},
+		{"extra baseline", map[string]string{"extra": "x"}, []string{"extra"}, []string{}},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			if validatePartition(mutation.ok, mutation.sup, mutation.gap) == nil {
+				t.Fatal("mutation was accepted")
+			}
+		})
+	}
+}
+
+func TestGoldenGuardsRejectSecretFullInput(t *testing.T) {
+	var corpus map[string]any
+	readFixture(t, "golden_corpus.json", &corpus)
+	for index, value := range array(t, corpus["cases"]) {
+		kase := object(t, value)
+		if !contains(stringArray(t, array(t, kase["categories"])), "secret") {
+			continue
+		}
+		clone := clonedJSON(t, corpus)
+		cloneCase := object(t, array(t, clone["cases"])[index])
+		object(t, cloneCase["expected"])["full"] = cloneCase["input"]
+		if validateSecretFull(array(t, clone["cases"])) == nil {
+			t.Fatalf("%s secret full=input was accepted", kase["id"])
+		}
+	}
+}
+
+func validateSecretFull(cases []any) error {
+	want := map[string]string{
+		"secret.api_key": "The integration key is [SECRET]", "secret.bearer_token": "Authorization: Bearer [SECRET]",
+		"secret.password_in_free_text": "Salasanani on [SECRET] jos se auttaa", "net.url_with_credentials_and_query_email": "Callback https://[SECRET]@api.example.com/v1?email=fixture@example.com failed",
+	}
+	seen := map[string]bool{}
+	for _, value := range cases {
+		kase := objectNoTest(value)
+		if kase == nil {
+			return fmt.Errorf("case is not an object")
+		}
+		id, input := kase["id"].(string), kase["input"].(string)
+		full := objectNoTest(kase["expected"])["full"]
+		if hasSecretCategory(kase["categories"]) {
+			if want[id] != full || input == full {
+				return fmt.Errorf("%s secret full output changed", id)
+			}
+			seen[id] = true
+		} else if input != full {
+			return fmt.Errorf("%s non-secret full output changed", id)
+		}
+	}
+	if len(seen) != len(want) {
+		return fmt.Errorf("secret classification changed")
+	}
+	return nil
+}
+
+func hasSecretCategory(value any) bool {
+	values, ok := value.([]any)
+	if !ok {
+		return false
+	}
+	for _, value := range values {
+		if value == "secret" {
+			return true
+		}
+	}
+	return false
+}

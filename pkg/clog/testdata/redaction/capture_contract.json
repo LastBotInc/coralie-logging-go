@@ -1,0 +1,1172 @@
+{
+  "schema_version": 2,
+  "contract_version": "2026-09-10.4",
+  "ticket": "LAS-3488",
+  "purpose": "Deterministic policy and boundary fixtures for future Rails and Go capture-boundary tests. LAS-3488 validates this contract but does not implement capture.",
+  "limits": {
+    "payload_field_utf8_bytes": 32768,
+    "record_compact_json_utf8_bytes": 65536,
+    "max_nesting": 8,
+    "max_collection_members": 128
+  },
+  "measurement": {
+    "encoding": "UTF-8",
+    "record_json": "compact JSON without BOM, newline, whitespace, HTML escaping, or ASCII-only Unicode escaping",
+    "depth": "object or array containers from payload root=1; scalar children add no depth",
+    "members": "direct children of each object or array; one object key/value pair is one member"
+  },
+  "vectors": [
+    {
+      "id": "shape.unknown_email_key",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "email": "fixture@example.com"
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_unknown_field",
+        "error_code": "capture_unknown_schema_field",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "shape.unknown_token_key",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "token": "not-a-credential"
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_unknown_field",
+        "error_code": "capture_unknown_schema_field",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "shape.nested_unknown_fields",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "known": {
+            "unknown": {
+              "email": "fixture@example.com"
+            }
+          },
+          "items": [
+            {
+              "unknown": "value"
+            }
+          ]
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_unknown_field",
+        "error_code": "capture_unknown_schema_field",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "shape.malformed_json",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": "{not-json"
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_payload_field",
+        "error_code": "invalid_structure",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "shape.wrong_type",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_count": "not-an-integer"
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_payload_field",
+        "error_code": "invalid_structure",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "shape.unknown_secret",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "secret=not-a-real-secret"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "full",
+        "action": "drop_payload_field",
+        "error_code": "unsafe_shape",
+        "output": {
+          "capture_level": "full",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "shape.metadata_stamped_raw_payload",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "envelope": {
+          "capture_level": "metadata",
+          "payload": {
+            "text": "raw"
+          }
+        }
+      },
+      "context": {
+        "requested_level": "metadata",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "reject_record",
+        "error_code": "capture_envelope_level_mismatch",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.synthetic_metadata_system_ceiling",
+      "owner_ticket": "LAS-3484 step 3",
+      "input": {
+        "payload": {
+          "approved_text": "synthetic"
+        }
+      },
+      "context": {
+        "synthetic_provenance": "verified",
+        "requested_level": "full",
+        "system_ceiling": "metadata",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "capture_ceiling_applied",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.synthetic_real_connector",
+      "owner_ticket": "LAS-3484 step 3",
+      "input": {
+        "payload": {
+          "approved_text": "synthetic request"
+        }
+      },
+      "context": {
+        "synthetic_provenance": "real_connector",
+        "requested_level": "full",
+        "system_ceiling": "full",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "capture_untrusted_synthetic_provenance",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.unknown_classification",
+      "owner_ticket": "LAS-3484 step 3",
+      "input": {
+        "payload": {
+          "approved_text": "unknown traffic"
+        }
+      },
+      "context": {
+        "traffic_classification": "unknown",
+        "requested_level": "full",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "capture_unknown_traffic_classification",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.replay_cannot_raise",
+      "owner_ticket": "LAS-3484 step 3",
+      "input": {
+        "payload": {
+          "approved_text": "replay"
+        }
+      },
+      "context": {
+        "source_capture_level": "redacted",
+        "requested_level": "full",
+        "system_ceiling": "full",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "allow_redacted_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "redacted",
+          "payload": {
+            "approved_text": "replay"
+          }
+        }
+      }
+    },
+    {
+      "id": "provenance.billing_usage_without_payload",
+      "owner_ticket": "LAS-3484 step 3",
+      "input": {
+        "usage": {
+          "input_tokens": 12,
+          "output_tokens": 4,
+          "provider": "openai"
+        }
+      },
+      "context": {
+        "requested_level": "metadata",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "allow_metadata",
+        "error_code": null,
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.external_session_id_omitted",
+      "owner_ticket": "LAS-3484 step 3",
+      "input": {
+        "payload": {
+          "session_id": "external-session"
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_unknown_field",
+        "error_code": "capture_external_identifier_omitted",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "contract.unknown",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": null
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.denied",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "denied"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.not_yet_valid",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2030-01-01T00:00:01Z",
+          "expires_at": "2030-01-02T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.expired_at_boundary",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-01T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.scope_mismatch.account",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-02T00:00:00Z",
+          "scope": {
+            "account": "acct-b",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.scope_mismatch.partner",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-02T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-b",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.scope_mismatch.purpose",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-02T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "sales",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.scope_mismatch.environment",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-02T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "production",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.scope_mismatch.store",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-02T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "journal"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.valid_redacted",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "redacted",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-02T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "allow_redacted_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "redacted",
+          "payload": {
+            "approved_text": "fixture"
+          }
+        }
+      }
+    },
+    {
+      "id": "contract.valid_full",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "superadmin_full_grant": {
+          "audit_event_id": "audit-fixture-001",
+          "basis_reference": "fixture://contracts/full-capture-basis",
+          "expires_at": "2030-01-02T00:00:00Z"
+        },
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-02T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "full",
+        "action": "allow_full_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "full",
+          "payload": {
+            "approved_text": "fixture"
+          }
+        }
+      }
+    },
+    {
+      "id": "contract.partner_restricts_account",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permissions": [
+          {
+            "owner": "account",
+            "status": "affirmative",
+            "permitted_level": "full",
+            "valid_from": "2029-12-31T00:00:00Z",
+            "expires_at": "2030-01-02T00:00:00Z",
+            "scope": {
+              "account": "acct-a",
+              "partner": "partner-a",
+              "environment": "review",
+              "purpose": "support",
+              "store": "trace_backend"
+            },
+            "evidence_reference": "fixture://contracts/account-affirmative"
+          },
+          {
+            "owner": "partner",
+            "status": "denied",
+            "permitted_level": "metadata",
+            "valid_from": "2029-12-31T00:00:00Z",
+            "expires_at": "2030-01-02T00:00:00Z",
+            "scope": {
+              "account": "acct-a",
+              "partner": "partner-a",
+              "environment": "review",
+              "purpose": "support",
+              "store": "trace_backend"
+            },
+            "evidence_reference": "fixture://contracts/partner-restrictive"
+          }
+        ]
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "contract.export_after_expiry",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "other_ceilings": "full",
+        "capture_time_utc": "2029-12-31T23:59:59Z",
+        "export_time_utc": "2030-01-01T00:00:00Z",
+        "server_scope": {
+          "account": "acct-a",
+          "partner": "partner-a",
+          "environment": "review",
+          "purpose": "support",
+          "store": "trace_backend"
+        },
+        "contract_permission": {
+          "status": "affirmative",
+          "permitted_level": "full",
+          "valid_from": "2029-12-31T00:00:00Z",
+          "expires_at": "2030-01-01T00:00:00Z",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "evidence_reference": "fixture://contracts/affirmative-evidence"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "contract_not_authorized",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "bounds.field.at",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "field_utf8",
+          "parts": [
+            {
+              "repeat": "😀",
+              "count": 8192
+            }
+          ]
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "retain_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "redacted",
+          "payload": "$materialized"
+        }
+      }
+    },
+    {
+      "id": "bounds.field.over",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "field_utf8",
+          "parts": [
+            {
+              "repeat": "😀",
+              "count": 8192
+            },
+            {
+              "literal": "x"
+            }
+          ]
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_payload_field",
+        "error_code": "field_bytes_exceeded",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "bounds.record.at",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "record_ascii",
+          "field_bytes": [
+            21730,
+            21730,
+            21730
+          ]
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "retain_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "redacted",
+          "policy_version": "capture-policy-2026-09-10.4",
+          "schema_version": "capture-contract-v2",
+          "traffic_classification": "synthetic",
+          "correlation_ids": {
+            "trace_id": "trace-fixture-opaque",
+            "turn_id": "turn-fixture-opaque"
+          },
+          "captured_at": "2030-01-01T00:00:00Z",
+          "expires_at": "2030-01-01T01:00:00Z",
+          "payload": "$materialized"
+        }
+      }
+    },
+    {
+      "id": "bounds.record.over",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "record_ascii",
+          "field_bytes": [
+            21731,
+            21730,
+            21730
+          ]
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_record_payload",
+        "error_code": "record_bytes_exceeded",
+        "output": {
+          "capture_level": "metadata",
+          "policy_version": "capture-policy-2026-09-10.4",
+          "schema_version": "capture-contract-v2",
+          "traffic_classification": "synthetic",
+          "correlation_ids": {
+            "trace_id": "trace-fixture-opaque",
+            "turn_id": "turn-fixture-opaque"
+          },
+          "captured_at": "2030-01-01T00:00:00Z",
+          "expires_at": "2030-01-01T01:00:00Z",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "bounds.depth.at",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "nested_object",
+          "containers": 8
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "retain_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "redacted",
+          "payload": "$materialized"
+        }
+      }
+    },
+    {
+      "id": "bounds.depth.over",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "nested_object",
+          "containers": 9
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_payload_field",
+        "error_code": "depth_exceeded",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "bounds.object_members.at",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "object_members",
+          "members": 128
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "retain_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "redacted",
+          "payload": "$materialized"
+        }
+      }
+    },
+    {
+      "id": "bounds.object_members.over",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "object_members",
+          "members": 129
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_payload_field",
+        "error_code": "members_exceeded",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    },
+    {
+      "id": "bounds.array_members.at",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "array_members",
+          "members": 128
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "retain_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "redacted",
+          "payload": "$materialized"
+        }
+      }
+    },
+    {
+      "id": "bounds.array_members.over",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "recipe": {
+          "kind": "array_members",
+          "members": 129
+        }
+      },
+      "context": {
+        "requested_level": "redacted",
+        "contract_authorized": true
+      },
+      "expected": {
+        "effective_level": "redacted",
+        "action": "drop_payload_field",
+        "error_code": "members_exceeded",
+        "output": {
+          "capture_level": "redacted",
+          "payload": {}
+        }
+      }
+    }
+  ]
+}
