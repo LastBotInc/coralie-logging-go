@@ -74,7 +74,7 @@ func IsInitialized() bool {
 
 // log enqueues a log event at the specified level.
 func log(level Level, iface, msg string, params ...interface{}) {
-	LogContext(nil, level, iface, msg, params...)
+	LogContext(context.Background(), level, iface, msg, params...)
 }
 
 // LogContext logs a message with the active OpenTelemetry trace and span IDs.
