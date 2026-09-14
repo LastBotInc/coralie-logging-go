@@ -53,7 +53,10 @@ existing contextless logging functions omit both fields. No SDK or exporter is
 initialized by this library, and logging never creates spans or copies baggage.
 
 The logger captures fixed-width IDs at enqueue time and formats them on the agent
-goroutine. Message redaction and the classic console/file format are unchanged.
+goroutine. Console and file sinks prefix contextful messages with
+`[trace_id=<32 hex> span_id=<16 hex>]`; contextless output and message redaction
+remain unchanged. Hooks and structured sinks receive the same redacted message
+with correlation IDs in their separate fields.
 Deduplication distinguishes trace/span IDs so identical messages from different
 calls survive; dedupe summaries have no correlation IDs. Custom sinks can implement
 `EventSink` to receive redacted, formatted events with correlation fields and nil
@@ -101,6 +104,5 @@ Comprehensive documentation is available in the [Documents/](Documents/) directo
 ## License
 
 Proprietary. Copyright © Lastbot Europe Oy. All rights reserved. See [LICENSE](LICENSE).
-
 
 

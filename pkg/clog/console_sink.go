@@ -48,7 +48,7 @@ func (s *consoleSink) write(level Level, iface, formatted string) {
 		// Format: [<timestamp>][<emoji+level>][<facility>]<message>
 		// All brackets: dark gray
 		bracketColor := term.ColorDarkGray
-		
+
 		// Timestamp: dark gray brackets
 		timestampPart := bracketColor + "[" + term.ColorReset + timestamp + bracketColor + "]" + term.ColorReset
 
@@ -108,6 +108,11 @@ func (s *consoleSink) write(level Level, iface, formatted string) {
 // Write implements Sink. Writes a formatted message to console.
 func (s *consoleSink) Write(level Level, iface, formatted string) {
 	s.write(level, iface, formatted)
+}
+
+// WriteEvent implements EventSink, retaining active correlation IDs in stdout.
+func (s *consoleSink) WriteEvent(event Event) {
+	s.write(event.Level, event.Iface, event.textMessage())
 }
 
 // Flush implements Sink. No-op for console.

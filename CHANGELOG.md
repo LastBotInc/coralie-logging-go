@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Add optional `LogContext` trace/span correlation to hooks, Better Stack JSON,
+  console and file sinks. Preserve contextless output and existing redaction;
+  logging does not initialize an SDK or create spans (LAS-3500).
+
 ## v0.2.0 (2026-06-08)
 
 Centralized PII redaction layer (LAS-1488 layer #1).
