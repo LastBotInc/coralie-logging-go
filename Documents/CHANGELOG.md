@@ -10,6 +10,11 @@ All notable changes to coralie-logging-go will be documented in this file.
 
 ## [Unreleased]
 
+## 2026-09-14
+
+- Check PCM writer cleanup errors in tests and document synthetic redaction
+  placeholders for the security linter. Runtime redaction is unchanged.
+
 ## 2026-09-10
 
 - Added LAS-3488 test-only governance fixtures: byte-pinned Rails golden corpus

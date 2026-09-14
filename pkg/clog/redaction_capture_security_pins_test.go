@@ -6,7 +6,7 @@ func sourceSecurityVectors() map[string]captureVectorExpectation {
 	return map[string]captureVectorExpectation{
 		"shape.unknown_email_key": sourceVector(map[string]any{"payload": map[string]any{"email": "fixture@example.com"}}, redacted,
 			captureResult("redacted", "drop_unknown_field", "capture_unknown_schema_field", map[string]any{})),
-		"shape.unknown_token_key": sourceVector(map[string]any{"payload": map[string]any{"token": "not-a-credential"}}, redacted,
+		"shape.unknown_token_key": sourceVector(map[string]any{"payload": map[string]any{"token": "not-a-credential"}}, redacted, // #nosec G101 -- Synthetic sentinel for unknown-field rejection, not a credential.
 			captureResult("redacted", "drop_unknown_field", "capture_unknown_schema_field", map[string]any{})),
 		"shape.nested_unknown_fields": sourceVector(map[string]any{"payload": map[string]any{
 			"known": map[string]any{"unknown": map[string]any{"email": "fixture@example.com"}}, "items": []any{map[string]any{"unknown": "value"}},

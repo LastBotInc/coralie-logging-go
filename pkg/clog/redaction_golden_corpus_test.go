@@ -119,7 +119,7 @@ func assertSecretFullOutputs(t *testing.T, cases []any) {
 	if err := validateSecretFull(cases); err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]string{
+	want := map[string]string{ // #nosec G101 -- Expected redaction placeholders, not credentials.
 		"secret.api_key": "The integration key is [SECRET]", "secret.bearer_token": "Authorization: Bearer [SECRET]",
 		"secret.password_in_free_text": "Salasanani on [SECRET] jos se auttaa", "net.url_with_credentials_and_query_email": "Callback https://[SECRET]@api.example.com/v1?email=fixture@example.com failed",
 	}
