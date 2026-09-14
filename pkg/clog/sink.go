@@ -2,13 +2,22 @@
 package clog
 
 // Sink writes log events to a destination (console, file, HTTP, etc.).
-// The agent calls Write for each event; the sink may apply level filtering
+// The agent calls Write for each event unless the sink also implements EventSink;
+// the sink may apply level filtering
 // and formatting internally. Flush and Close are called during Shutdown;
 // sinks that do not need them may use no-op implementations.
 type Sink interface {
 	Write(level Level, iface, formatted string)
 	Flush()
 	Close()
+}
+
+// EventSink optionally receives correlation metadata alongside the already
+// formatted, redacted Message. Params is nil. The agent calls WriteEvent instead
+// of Write for ordinary events; existing Sink implementations remain compatible.
+type EventSink interface {
+	Sink
+	WriteEvent(Event)
 }
 
 // levelFilter returns true if the event should be written given minLevel and omitSet.

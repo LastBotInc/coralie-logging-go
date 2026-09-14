@@ -43,6 +43,22 @@ go get github.com/LastBotInc/coralie-logging-go
 - **Hooks**: Global and per-level hooks for custom processing
 - **Performance**: Bounded queues, drop policies, minimal allocations
 
+## Trace correlation
+
+Call `clog.LogContext(ctx, clog.LevelInfo, "Worker", "control operation completed")`
+from a context carrying an OpenTelemetry span. Hooks receive `Event.TraceID` and
+`Event.SpanID`; BetterStack receives `trace_id` and `span_id` JSON fields. A valid
+unsampled context also supplies correlation IDs. A nil/background context and the
+existing contextless logging functions omit both fields. No SDK or exporter is
+initialized by this library, and logging never creates spans or copies baggage.
+
+The logger captures fixed-width IDs at enqueue time and formats them on the agent
+goroutine. Message redaction and the classic console/file format are unchanged.
+Deduplication distinguishes trace/span IDs so identical messages from different
+calls survive; dedupe summaries have no correlation IDs. Custom sinks can implement
+`EventSink` to receive redacted, formatted events with correlation fields and nil
+`Params`, while ordinary `Sink` implementations continue using `Write`.
+
 ## Environment Variables
 
 The library reads the following environment variables at initialization time:
@@ -85,8 +101,6 @@ Comprehensive documentation is available in the [Documents/](Documents/) directo
 ## License
 
 Proprietary. Copyright © Lastbot Europe Oy. All rights reserved. See [LICENSE](LICENSE).
-
-
 
 
 

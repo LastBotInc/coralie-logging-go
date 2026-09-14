@@ -12,6 +12,11 @@ All notable changes to coralie-logging-go will be documented in this file.
 
 ## 2026-09-14
 
+- Add `LogContext` and optional `EventSink` for OpenTelemetry trace/span correlation
+  in hooks and BetterStack logs (LAS-3500). Contextless APIs and message redaction
+  retain their behavior; no SDK/exporter or spans are created by the logger.
+- Keep identical log messages from distinct trace/span contexts separate during
+  deduplication. Correlation fields are omitted when no valid context is supplied.
 - Check PCM writer cleanup errors in tests and document synthetic redaction
   placeholders for the security linter. Runtime redaction is unchanged.
 
