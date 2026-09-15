@@ -167,7 +167,11 @@ func TestWriterHonorsFilenamePatternAndPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer w2.Close()
+	defer func() {
+		if err := w2.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if w2.Path() == path {
 		t.Fatalf("distinct patterns produced the same path %q", path)
 	}

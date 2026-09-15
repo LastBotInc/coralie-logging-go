@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- 2026-09-15 (LAS-3488): synchronize 55 governance corpus cases and 42 capture
+  contract vectors with Rails. Remove positive national-identifier examples
+  without verified nonassignment, retain malformed near misses, and use reserved
+  email domains. Positive national-ID detection remains unverified by this corpus;
+  native redactors and runtime capture behavior are unchanged.
+
 ## v0.2.0 (2026-06-08)
 
 Centralized PII redaction layer (LAS-1488 layer #1).
