@@ -11,6 +11,7 @@ import (
 var expectedContractIDs = []string{
 	"shape.unknown_email_key", "shape.unknown_token_key", "shape.nested_unknown_fields", "shape.malformed_json", "shape.wrong_type", "shape.unknown_secret", "shape.metadata_stamped_raw_payload",
 	"provenance.synthetic_metadata_system_ceiling", "provenance.synthetic_real_connector", "provenance.unknown_classification", "provenance.replay_cannot_raise", "provenance.billing_usage_without_payload", "provenance.external_session_id_omitted",
+	"provenance.synthetic_attestation_verified", "provenance.synthetic_attestation_forged", "provenance.synthetic_attestation_expired", "provenance.synthetic_attestation_revoked", "provenance.synthetic_attestation_manifest_changed", "provenance.synthetic_attestation_scope_mismatch",
 	"contract.unknown", "contract.denied", "contract.not_yet_valid", "contract.expired_at_boundary", "contract.scope_mismatch.account", "contract.scope_mismatch.partner", "contract.scope_mismatch.purpose", "contract.scope_mismatch.environment", "contract.scope_mismatch.store", "contract.valid_redacted", "contract.valid_full", "contract.partner_restricts_account", "contract.export_after_expiry",
 	"bounds.field.at", "bounds.field.over", "bounds.record.at", "bounds.record.over", "bounds.depth.at", "bounds.depth.over", "bounds.object_members.at", "bounds.object_members.over", "bounds.array_members.at", "bounds.array_members.over",
 }
@@ -19,7 +20,7 @@ func TestCaptureContractSchemaAndPolicyPins(t *testing.T) {
 	var contract map[string]any
 	readFixture(t, "capture_contract.json", &contract)
 	assertKeys(t, contract, "contract_version", "limits", "measurement", "purpose", "schema_version", "ticket", "vectors")
-	if contract["schema_version"] != float64(2) || contract["contract_version"] != "2026-09-10.4" {
+	if contract["schema_version"] != float64(2) || contract["contract_version"] != "2026-09-15.1" {
 		t.Fatal("capture contract version drifted")
 	}
 	limits := object(t, contract["limits"])

@@ -2,7 +2,7 @@
 package clog
 
 func validProvenance(provenance map[string]any) bool {
-	if provenance["rails_repository"] != "LastBotInc/lastbot" || provenance["rails_commit"] != "062dfd6975512604eb3a88a3e3c3b099a4e8368b" {
+	if provenance["rails_repository"] != "LastBotInc/lastbot" || provenance["rails_commit"] != "adddf3495beb3564aeef9adb0890013ff37eb7f6" {
 		return false
 	}
 	fixtures := objectNoTest(provenance["fixtures"])
@@ -10,8 +10,8 @@ func validProvenance(provenance map[string]any) bool {
 		return false
 	}
 	want := map[string]map[string]any{
-		"golden_corpus":    {"path": "test/fixtures/files/redaction/golden_corpus.json", "version": "2026-09-10.2", "sha256": "d9d5a426043099e78630c798f7893648c4c23b9d101becbed59bf80a71f82f6d"},
-		"capture_contract": {"path": "test/fixtures/files/redaction/capture_contract.json", "version": "2026-09-10.4", "sha256": "c45694d7fb89cc1c4f0248e5e8df6584d973dbe7d6c04a632308df975f010216"},
+		"golden_corpus":    {"path": "test/fixtures/files/redaction/golden_corpus.json", "version": "2026-09-15.1", "sha256": "397452b288dea786780b1ab092bb39918076afdd90dac6d8bce48bf9e7d434c8"},
+		"capture_contract": {"path": "test/fixtures/files/redaction/capture_contract.json", "version": "2026-09-15.1", "sha256": "433fd2a1fa5ea8d080ff684f00650a8e3f8e0ab53b0b1fce2d12e58f2db8b2d4"},
 	}
 	for name, entry := range want {
 		actual := objectNoTest(fixtures[name])

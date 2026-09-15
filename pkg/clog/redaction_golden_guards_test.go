@@ -18,8 +18,8 @@ func TestGoldenGuardsRejectWeakenedPartitions(t *testing.T) {
 		sup  []string
 		gap  []string
 	}{
-		{"deleted partition member", outputs, expectedCorpusIDs[:69], []string{}},
-		{"duplicate partition member", outputs, append(append([]string{}, expectedCorpusIDs...), "fi.hetu.free_text"), []string{}},
+		{"deleted partition member", outputs, expectedCorpusIDs[:len(expectedCorpusIDs)-1], []string{}},
+		{"duplicate partition member", outputs, append(append([]string{}, expectedCorpusIDs...), expectedCorpusIDs[0]), []string{}},
 		{"extra baseline", map[string]string{"extra": "x"}, expectedCorpusIDs, []string{}},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {

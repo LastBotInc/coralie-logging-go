@@ -25,17 +25,17 @@ func TestGoldenCorpusGuardsRejectSchemaMutations(t *testing.T) {
 		name string
 		edit func(map[string]any)
 	}{
-		{"missing id", func(c map[string]any) { c["cases"] = array(t, c["cases"])[:69] }},
+		{"missing id", func(c map[string]any) { c["cases"] = array(t, c["cases"])[:len(expectedCorpusIDs)-1] }},
 		{"extra id", func(c map[string]any) {
 			cases := array(t, c["cases"])
 			extra := clonedJSON(t, object(t, cases[0]))
 			extra["id"] = "extra.case"
 			c["cases"] = append(cases, extra)
 		}},
-		{"duplicate id", func(c map[string]any) { object(t, array(t, c["cases"])[1])["id"] = "fi.hetu.free_text" }},
-		{"unknown kind", func(c map[string]any) { object(t, array(t, c["cases"])[56])["kind"] = "unexpected" }},
+		{"duplicate id", func(c map[string]any) { object(t, array(t, c["cases"])[1])["id"] = expectedCorpusIDs[0] }},
+		{"unknown kind", func(c map[string]any) { object(t, array(t, c["cases"])[0])["kind"] = "unexpected" }},
 		{"negative redaction", func(c map[string]any) {
-			object(t, object(t, array(t, c["cases"])[56])["expected"])["redacted"] = "changed"
+			object(t, object(t, array(t, c["cases"])[len(expectedCorpusIDs)-1])["expected"])["redacted"] = "changed"
 		}},
 		{"notes number", func(c map[string]any) { object(t, array(t, c["cases"])[0])["notes"] = float64(1) }},
 	} {

@@ -1,50 +1,6 @@
 {
-  "corpus_version": "2026-09-10.2",
+  "corpus_version": "2026-09-15.1",
   "outputs": [
-    {
-      "id": "fi.hetu.free_text",
-      "output": "Hei, henkilötunnukseni on 131052-308T, voisitteko tarkistaa tilaukseni?"
-    },
-    {
-      "id": "fi.hetu.century_a",
-      "output": "Lapsen hetu on 010106A9012 varausta varten."
-    },
-    {
-      "id": "fi.hetu.century_plus",
-      "output": "Arkistotieto: 131052+308T"
-    },
-    {
-      "id": "fi.hetu.lowercase",
-      "output": "hetu 131052a308t"
-    },
-    {
-      "id": "sv.personnummer.separated",
-      "output": "Mitt personnummer är 811218-9876."
-    },
-    {
-      "id": "sv.personnummer.unseparated",
-      "output": "Personnummer 198112189876 tack."
-    },
-    {
-      "id": "sv.personnummer.coordination",
-      "output": "Samordningsnummer 811278-9873 för bokningen."
-    },
-    {
-      "id": "et.isikukood",
-      "output": "Minu isikukood on 37605030299."
-    },
-    {
-      "id": "pl.pesel",
-      "output": "Mój PESEL to 44051401359."
-    },
-    {
-      "id": "da.cpr",
-      "output": "Mit CPR-nummer er 250347-1119."
-    },
-    {
-      "id": "da.cpr.ambiguous_with_personnummer",
-      "output": "Mit CPR-nummer er 070761-4285."
-    },
     {
       "id": "fi.iban.spaced",
       "output": "Palauttakaa tilille FI21 1234 5600 0007 85 kiitos."
@@ -78,40 +34,24 @@
       "output": "Card 30569309025904 declined."
     },
     {
-      "id": "fi.multi_category_one_string",
-      "output": "hetu 131052-308T, tili FI21 1234 5600 0007 85, kortti 4111 1111 1111 1111"
-    },
-    {
-      "id": "multi.repeated_across_lines",
-      "output": "rivi 1: 131052-308T\nrivi 2: 131052-308T"
-    },
-    {
-      "id": "mixed.emoji_around_identifier",
-      "output": "kiitos 🎉 hetu 131052-308T 🎉"
-    },
-    {
-      "id": "mixed.escaped_json_string",
-      "output": "{\"muistiinpano\":\"hetu 131052-308T ja \\\"lainaus\\\"\"}"
-    },
-    {
       "id": "en.email.simple",
-      "output": "Please send the receipt to \u003cemail\u003e"
+      "output": "Please send the receipt to <email>"
     },
     {
       "id": "fi.email.plus_addressed_uppercase",
-      "output": "Kirjoita osoitteeseen \u003cemail\u003e"
+      "output": "Kirjoita osoitteeseen <email>"
     },
     {
       "id": "en.email.trailing_period",
-      "output": "Write to \u003cemail\u003e."
+      "output": "Write to <email>."
     },
     {
       "id": "sv.email.idn_punycode",
-      "output": "Skicka till \u003cemail\u003e"
+      "output": "Skicka till <email>"
     },
     {
       "id": "multi.email_repeated",
-      "output": "kaksi kertaa \u003cemail\u003e ja \u003cemail\u003e"
+      "output": "kaksi kertaa <email> ja <email>"
     },
     {
       "id": "fi.phone.e164_spaced",
@@ -139,7 +79,7 @@
     },
     {
       "id": "net.ipv4",
-      "output": "Connection from \u003cip\u003e dropped."
+      "output": "Connection from <ip> dropped."
     },
     {
       "id": "net.ipv6",
@@ -147,7 +87,7 @@
     },
     {
       "id": "net.url_with_credentials_and_query_email",
-      "output": "Callback https://user:\u003cemail\u003e/v1?email=\u003cemail\u003e failed"
+      "output": "Callback https://user:<email>/v1?email=<email> failed"
     },
     {
       "id": "fi.person_name",
@@ -163,7 +103,7 @@
     },
     {
       "id": "mixed.script_name_email_phone",
-      "output": "客户 Ирина Петрова kirjoitti osoitteesta \u003cemail\u003e numerosta \u003cphone\u003e"
+      "output": "客户 Ирина Петрова kirjoitti osoitteesta <email> numerosta <phone>"
     },
     {
       "id": "fi.street_address",
@@ -191,11 +131,11 @@
     },
     {
       "id": "json.tool_arguments_free_text_spillage",
-      "output": "{\"tool\":\"get_order\",\"args\":{\"order_id\":\"ORD-2026-000123\",\"note\":\"asiakas Matti soitti numerosta \u003cphone\u003e\"}}"
+      "output": "{\"tool\":\"get_order\",\"args\":{\"order_id\":\"ORD-2026-000123\",\"note\":\"asiakas Matti soitti numerosta <phone>\"}}"
     },
     {
       "id": "json.tool_result_customer_block",
-      "output": "{\"order\":{\"id\":\"ORD-2026-000123\",\"customer\":{\"name\":\"Anna Karlsson\",\"email\":\"\u003cemail\u003e\"},\"total\":\"59.70 EUR\"}}"
+      "output": "{\"order\":{\"id\":\"ORD-2026-000123\",\"customer\":{\"name\":\"Anna Karlsson\",\"email\":\"<email>\"},\"total\":\"59.70 EUR\"}}"
     },
     {
       "id": "neg.idempotent_already_redacted",
@@ -227,7 +167,7 @@
     },
     {
       "id": "neg.four_part_version",
-      "output": "Assembly version \u003cip\u003e loaded."
+      "output": "Assembly version <ip> loaded."
     },
     {
       "id": "neg.invalid_ipv4_octet",

@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "contract_version": "2026-09-10.4",
+  "contract_version": "2026-09-15.1",
   "ticket": "LAS-3488",
   "purpose": "Deterministic policy and boundary fixtures for future Rails and Go capture-boundary tests. LAS-3488 validates this contract but does not implement capture.",
   "limits": {
@@ -320,6 +320,291 @@
         "output": {
           "capture_level": "redacted",
           "payload": {}
+        }
+      }
+    },
+    {
+      "id": "provenance.synthetic_attestation_verified",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "synthetic fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "system_ceiling": "full",
+        "synthetic_attestation": {
+          "issuer": "custsim-runner",
+          "attestation_id": "synthetic-run-fixture",
+          "principal_id": "review-service-fixture",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "fixture_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "data_plane_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "issued_at": "2029-12-31T23:59:00Z",
+          "expires_at": "2030-01-01T01:00:00Z"
+        },
+        "sink_verification": {
+          "lookup": "server_registry",
+          "issuer_authenticated": true,
+          "principal_authorized": true,
+          "scope_matches": true,
+          "manifest_matches": true,
+          "revoked": false,
+          "checked_at": "2030-01-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "effective_level": "full",
+        "action": "allow_full_payload",
+        "error_code": null,
+        "output": {
+          "capture_level": "full",
+          "payload": {
+            "approved_text": "synthetic fixture"
+          }
+        }
+      }
+    },
+    {
+      "id": "provenance.synthetic_attestation_forged",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "synthetic fixture"
+        },
+        "synthetic_attestation": {
+          "issuer": "custsim-runner",
+          "attestation_id": "synthetic-run-fixture",
+          "principal_id": "review-service-fixture",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "fixture_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "data_plane_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "issued_at": "2029-12-31T23:59:00Z",
+          "expires_at": "2030-01-01T01:00:00Z"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "system_ceiling": "full",
+        "synthetic_attestation": null,
+        "sink_verification": {
+          "lookup": "server_registry",
+          "issuer_authenticated": false,
+          "principal_authorized": true,
+          "scope_matches": true,
+          "manifest_matches": true,
+          "revoked": false,
+          "checked_at": "2030-01-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "capture_untrusted_synthetic_provenance",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.synthetic_attestation_expired",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "synthetic fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "system_ceiling": "full",
+        "synthetic_attestation": {
+          "issuer": "custsim-runner",
+          "attestation_id": "synthetic-run-fixture",
+          "principal_id": "review-service-fixture",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "fixture_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "data_plane_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "issued_at": "2029-12-31T23:59:00Z",
+          "expires_at": "2030-01-01T00:00:00Z"
+        },
+        "sink_verification": {
+          "lookup": "server_registry",
+          "issuer_authenticated": true,
+          "principal_authorized": true,
+          "scope_matches": true,
+          "manifest_matches": true,
+          "revoked": false,
+          "checked_at": "2030-01-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "capture_synthetic_attestation_expired",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.synthetic_attestation_revoked",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "synthetic fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "system_ceiling": "full",
+        "synthetic_attestation": {
+          "issuer": "custsim-runner",
+          "attestation_id": "synthetic-run-fixture",
+          "principal_id": "review-service-fixture",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "fixture_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "data_plane_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "issued_at": "2029-12-31T23:59:00Z",
+          "expires_at": "2030-01-01T01:00:00Z"
+        },
+        "sink_verification": {
+          "lookup": "server_registry",
+          "issuer_authenticated": true,
+          "principal_authorized": true,
+          "scope_matches": true,
+          "manifest_matches": true,
+          "revoked": true,
+          "checked_at": "2030-01-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "capture_synthetic_attestation_revoked",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.synthetic_attestation_manifest_changed",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "synthetic fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "system_ceiling": "full",
+        "synthetic_attestation": {
+          "issuer": "custsim-runner",
+          "attestation_id": "synthetic-run-fixture",
+          "principal_id": "review-service-fixture",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "fixture_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "data_plane_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "issued_at": "2029-12-31T23:59:00Z",
+          "expires_at": "2030-01-01T01:00:00Z"
+        },
+        "sink_verification": {
+          "lookup": "server_registry",
+          "issuer_authenticated": true,
+          "principal_authorized": true,
+          "scope_matches": true,
+          "manifest_matches": false,
+          "revoked": false,
+          "checked_at": "2030-01-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "capture_synthetic_manifest_changed",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
+        }
+      }
+    },
+    {
+      "id": "provenance.synthetic_attestation_scope_mismatch",
+      "owner_ticket": "LAS-3489",
+      "input": {
+        "payload": {
+          "approved_text": "synthetic fixture"
+        }
+      },
+      "context": {
+        "requested_level": "full",
+        "system_ceiling": "full",
+        "synthetic_attestation": {
+          "issuer": "custsim-runner",
+          "attestation_id": "synthetic-run-fixture",
+          "principal_id": "review-service-fixture",
+          "scope": {
+            "account": "acct-a",
+            "partner": "partner-a",
+            "environment": "review",
+            "purpose": "support",
+            "store": "trace_backend"
+          },
+          "fixture_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "data_plane_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "issued_at": "2029-12-31T23:59:00Z",
+          "expires_at": "2030-01-01T01:00:00Z"
+        },
+        "sink_verification": {
+          "lookup": "server_registry",
+          "issuer_authenticated": true,
+          "principal_authorized": true,
+          "scope_matches": false,
+          "manifest_matches": true,
+          "revoked": false,
+          "checked_at": "2030-01-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "effective_level": "metadata",
+        "action": "drop_payload",
+        "error_code": "capture_synthetic_scope_mismatch",
+        "output": {
+          "capture_level": "metadata",
+          "payload": null
         }
       }
     },
@@ -981,7 +1266,7 @@
         "error_code": null,
         "output": {
           "capture_level": "redacted",
-          "policy_version": "capture-policy-2026-09-10.4",
+          "policy_version": "capture-policy-2026-09-15.1",
           "schema_version": "capture-contract-v2",
           "traffic_classification": "synthetic",
           "correlation_ids": {
@@ -1017,7 +1302,7 @@
         "error_code": "record_bytes_exceeded",
         "output": {
           "capture_level": "metadata",
-          "policy_version": "capture-policy-2026-09-10.4",
+          "policy_version": "capture-policy-2026-09-15.1",
           "schema_version": "capture-contract-v2",
           "traffic_classification": "synthetic",
           "correlation_ids": {

@@ -92,7 +92,7 @@ func assertBoundaryResult(t *testing.T, id string, expected map[string]any, payl
 
 func completeEnvelope(payload any, captureLevel string) map[string]any {
 	return map[string]any{
-		"capture_level": captureLevel, "policy_version": "capture-policy-2026-09-10.4", "schema_version": "capture-contract-v2",
+		"capture_level": captureLevel, "policy_version": "capture-policy-2026-09-15.1", "schema_version": "capture-contract-v2",
 		"traffic_classification": "synthetic", "correlation_ids": map[string]any{"trace_id": "trace-fixture-opaque", "turn_id": "turn-fixture-opaque"},
 		"captured_at": "2030-01-01T00:00:00Z", "expires_at": "2030-01-01T01:00:00Z", "payload": payload,
 	}
