@@ -184,6 +184,7 @@ func (a *agent) run() {
 //     recombine PII split across Message+Params (e.g. "%s@%s" + ["alice","x.com"]).
 //     The same redacted string feeds every sink.
 func (a *agent) processEvent(e Event) {
+	e.formatContext()
 	// Bound oversized string params before formatting (DoS guard, pre-Sprintf).
 	e.Params = boundParams(e.Params)
 
@@ -192,7 +193,7 @@ func (a *agent) processEvent(e Event) {
 
 	// Check deduplication on the RAW (pre-redaction) formatted string so distinct
 	// callers are not collapsed by redaction tokens.
-	shouldSuppress, shouldEmitSummary := a.dedupe.check(e.Level, e.Iface, formatted)
+	shouldSuppress, shouldEmitSummary := a.dedupe.check(e.Level, e.Iface, formatted, e.TraceID, e.SpanID)
 
 	// Emit summary if needed.
 	if shouldEmitSummary {
@@ -217,7 +218,11 @@ func (a *agent) processEvent(e Event) {
 	a.callHooks(hookEvent)
 
 	for _, sink := range a.sinks {
-		sink.Write(e.Level, e.Iface, formattedRedacted)
+		if eventSink, ok := sink.(EventSink); ok {
+			eventSink.WriteEvent(hookEvent)
+		} else {
+			sink.Write(e.Level, e.Iface, formattedRedacted)
+		}
 	}
 
 	// Record emitted

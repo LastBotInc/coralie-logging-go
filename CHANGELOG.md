@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Add optional `LogContext` trace/span correlation to hooks, Better Stack JSON,
+  console and file sinks. Preserve contextless output and existing redaction;
+  logging does not initialize an SDK or create spans (LAS-3500).
 - 2026-09-15 (LAS-3488): synchronize 55 governance corpus cases and 42 capture
   contract vectors with Rails. Remove positive national-identifier examples
   without verified nonassignment, retain malformed near misses, and use reserved

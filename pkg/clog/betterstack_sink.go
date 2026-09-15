@@ -28,6 +28,8 @@ type betterstackEvent struct {
 	Level    string `json:"level"`
 	Facility string `json:"facility"`
 	Message  string `json:"message"`
+	TraceID  string `json:"trace_id,omitempty"`
+	SpanID   string `json:"span_id,omitempty"`
 }
 
 // newBetterStackSink creates a BetterStack sink from SinkConfig. Token must be set; Endpoint defaults if empty.
@@ -53,7 +55,13 @@ func newBetterStackSink(c SinkConfig) (*betterstackSink, error) {
 
 // Write implements Sink. Sends one JSON event per call (no batching in v1).
 func (s *betterstackSink) Write(level Level, iface, formatted string) {
-	if !levelFilter(level, s.minLevel, s.omitLevels) {
+	s.WriteEvent(Event{Level: level, Iface: iface, Message: formatted})
+}
+
+// WriteEvent implements EventSink. The agent has already formatted and redacted
+// Message; correlation IDs are metadata and never alter the message body.
+func (s *betterstackSink) WriteEvent(event Event) {
+	if !levelFilter(event.Level, s.minLevel, s.omitLevels) {
 		return
 	}
 	s.mu.Lock()
@@ -65,9 +73,11 @@ func (s *betterstackSink) Write(level Level, iface, formatted string) {
 
 	ev := betterstackEvent{
 		Dt:       time.Now().UTC().Format(time.RFC3339Nano),
-		Level:    level.String(),
-		Facility: iface,
-		Message:  formatted,
+		Level:    event.Level.String(),
+		Facility: event.Iface,
+		Message:  event.Message,
+		TraceID:  event.TraceID,
+		SpanID:   event.SpanID,
 	}
 	body, _ := json.Marshal(ev)
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, s.endpoint, bytes.NewReader(body))

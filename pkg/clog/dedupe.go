@@ -5,11 +5,13 @@ import "fmt"
 
 // dedupeState tracks deduplication state.
 type dedupeState struct {
-	lastLevel    Level
-	lastIface    string
-	lastMessage  string
-	repeatCount  int
-	enabled      bool
+	lastLevel     Level
+	lastIface     string
+	lastMessage   string
+	lastTraceID   string
+	lastSpanID    string
+	repeatCount   int
+	enabled       bool
 	summaryFormat string
 }
 
@@ -23,13 +25,14 @@ func newDedupeState(cfg DedupeConfig) *dedupeState {
 
 // check checks if an event is a duplicate and returns whether to suppress it.
 // Returns (shouldSuppress, shouldEmitSummary).
-func (d *dedupeState) check(level Level, iface, formatted string) (bool, bool) {
+func (d *dedupeState) check(level Level, iface, formatted, traceID, spanID string) (bool, bool) {
 	if !d.enabled {
 		return false, false
 	}
 
 	// Check if this matches the last message
-	if d.lastLevel == level && d.lastIface == iface && d.lastMessage == formatted {
+	if d.lastLevel == level && d.lastIface == iface && d.lastMessage == formatted &&
+		d.lastTraceID == traceID && d.lastSpanID == spanID {
 		d.repeatCount++
 		return true, false // Suppress this message
 	}
@@ -41,6 +44,8 @@ func (d *dedupeState) check(level Level, iface, formatted string) (bool, bool) {
 	d.lastLevel = level
 	d.lastIface = iface
 	d.lastMessage = formatted
+	d.lastTraceID = traceID
+	d.lastSpanID = spanID
 	// Note: repeatCount will be reset by flushSummary() when summary is emitted
 
 	return false, shouldEmitSummary
@@ -57,6 +62,3 @@ func (d *dedupeState) flushSummary() (Level, string, string, bool) {
 
 	return d.lastLevel, d.lastIface, summary, true
 }
-
-
-

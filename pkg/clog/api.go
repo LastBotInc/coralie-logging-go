@@ -74,6 +74,13 @@ func IsInitialized() bool {
 
 // log enqueues a log event at the specified level.
 func log(level Level, iface, msg string, params ...interface{}) {
+	LogContext(context.Background(), level, iface, msg, params...)
+}
+
+// LogContext logs a message with the active OpenTelemetry trace and span IDs.
+// A nil context or context without a valid span emits no correlation fields.
+// It never starts spans, exports telemetry, or adds context values to messages.
+func LogContext(ctx context.Context, level Level, iface, msg string, params ...interface{}) {
 	if iface == "" {
 		iface = defaultIface
 	}
@@ -92,6 +99,7 @@ func log(level Level, iface, msg string, params ...interface{}) {
 		Message: msg,
 		Params:  params,
 	}
+	event.captureContext(ctx)
 
 	if agent.enqueue(event) {
 		recordAccepted()
@@ -156,4 +164,3 @@ func AudioWriteBytesPCM16LE(data []byte) {
 		_ = agent.audioWriter.WriteBytesPCM16LE(data)
 	}
 }
-

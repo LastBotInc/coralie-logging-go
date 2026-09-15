@@ -4,8 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestConsoleSink(t *testing.T) {
@@ -109,7 +112,61 @@ func TestOmitLevel(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
+func TestContextfulConsoleAndFileCorrelation(t *testing.T) {
+	dir := t.TempDir()
+	consolePath := filepath.Join(dir, "console.log")
+	console, err := os.Create(consolePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalStdout := os.Stdout
+	os.Stdout = console
+	t.Cleanup(func() {
+		Shutdown(context.Background())
+		os.Stdout = originalStdout
+		if err := console.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	previousRedaction := RedactionEnabled()
+	SetRedactionEnabled(true)
+	t.Cleanup(func() { SetRedactionEnabled(previousRedaction) })
+	cfg := DefaultConfig()
+	cfg.Console.Enabled = true
+	cfg.Console.Colors = false
+	cfg.Dedupe.Enabled = false
+	cfg.File.BaseDir = dir
+	cfg.File.PerLevel = map[Level]string{LevelInfo: "events.log"}
+	Init(cfg)
+	spanContext := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: trace.TraceID{1}, SpanID: trace.SpanID{2},
+	})
+	ctx := trace.ContextWithSpanContext(context.Background(), spanContext)
+	LogContext(ctx, LevelInfo, "Call", "completed for %s@%s", "synthetic", "example.invalid")
+	Info("Call", "legacy message")
+	LogContext(context.Background(), LevelInfo, "Call", "background message")
+	Shutdown(context.Background())
 
-
-
-
+	for _, path := range []string{consolePath, filepath.Join(dir, "events.log")} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		if len(lines) != 3 {
+			t.Fatalf("%s: got %d lines, want 3", filepath.Base(path), len(lines))
+		}
+		wantCorrelation := "[trace_id=" + spanContext.TraceID().String() + " span_id=" + spanContext.SpanID().String() + "] "
+		if !strings.Contains(lines[0], "[INFO][Call]"+wantCorrelation+"completed for ") {
+			t.Errorf("%s: contextful record lost correlation", filepath.Base(path))
+		}
+		if strings.Contains(lines[0], "synthetic@example.invalid") {
+			t.Errorf("%s: contextful record bypassed redaction", filepath.Base(path))
+		}
+		for i, message := range []string{"legacy message", "background message"} {
+			if !strings.HasSuffix(lines[i+1], "[INFO][Call]"+message) || strings.Contains(lines[i+1], "trace_id=") || strings.Contains(lines[i+1], "span_id=") {
+				t.Errorf("%s: contextless record changed", filepath.Base(path))
+			}
+		}
+	}
+}

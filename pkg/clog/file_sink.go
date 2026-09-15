@@ -13,9 +13,9 @@ import (
 
 // fileSink handles file output with per-level routing.
 type fileSink struct {
-	cfg      FileConfig
-	files    map[Level]*os.File
-	mu       sync.Mutex
+	cfg   FileConfig
+	files map[Level]*os.File
+	mu    sync.Mutex
 }
 
 // newFileSink creates a new file sink.
@@ -107,6 +107,11 @@ func (s *fileSink) close() {
 // Write implements Sink. Writes a formatted message to the appropriate file(s).
 func (s *fileSink) Write(level Level, iface, formatted string) {
 	s.write(level, iface, formatted)
+}
+
+// WriteEvent implements EventSink, retaining active correlation IDs in files.
+func (s *fileSink) WriteEvent(event Event) {
+	s.write(event.Level, event.Iface, event.textMessage())
 }
 
 // Flush implements Sink. Syncs all open files.
