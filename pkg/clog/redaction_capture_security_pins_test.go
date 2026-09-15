@@ -3,7 +3,7 @@ package clog
 
 func sourceSecurityVectors() map[string]captureVectorExpectation {
 	redacted := map[string]any{"requested_level": "redacted", "contract_authorized": true}
-	return map[string]captureVectorExpectation{
+	vectors := map[string]captureVectorExpectation{
 		"shape.unknown_email_key": sourceVector(map[string]any{"payload": map[string]any{"email": "fixture@example.com"}}, redacted,
 			captureResult("redacted", "drop_unknown_field", "capture_unknown_schema_field", map[string]any{})),
 		"shape.unknown_token_key": sourceVector(map[string]any{"payload": map[string]any{"token": "not-a-credential"}}, redacted, // #nosec G101 -- Synthetic sentinel for unknown-field rejection, not a credential.
@@ -40,6 +40,52 @@ func sourceSecurityVectors() map[string]captureVectorExpectation {
 		"provenance.external_session_id_omitted": sourceVector(map[string]any{"payload": map[string]any{"session_id": "external-session"}},
 			redacted, captureResult("redacted", "drop_unknown_field", "capture_external_identifier_omitted", map[string]any{})),
 	}
+	// These are exact fixture expectations, not an attestation verifier or
+	// evidence that a runtime sink authenticates these synthetic records.
+	for _, entry := range []struct{ suffix, code string }{
+		{"verified", ""},
+		{"forged", "capture_untrusted_synthetic_provenance"},
+		{"expired", "capture_synthetic_attestation_expired"},
+		{"revoked", "capture_synthetic_attestation_revoked"},
+		{"manifest_changed", "capture_synthetic_manifest_changed"},
+		{"scope_mismatch", "capture_synthetic_scope_mismatch"},
+	} {
+		attestation := map[string]any{
+			"issuer": "custsim-runner", "attestation_id": "synthetic-run-fixture", "principal_id": "review-service-fixture",
+			"scope":                   sourceServerScope(),
+			"fixture_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+			"data_plane_sha256":       "2222222222222222222222222222222222222222222222222222222222222222",
+			"issued_at":               "2029-12-31T23:59:00Z", "expires_at": "2030-01-01T01:00:00Z",
+		}
+		verification := map[string]any{
+			"lookup": "server_registry", "issuer_authenticated": true, "principal_authorized": true,
+			"scope_matches": true, "manifest_matches": true, "revoked": false, "checked_at": "2030-01-01T00:00:00Z",
+		}
+		payload := map[string]any{"approved_text": "synthetic fixture"}
+		input := map[string]any{"payload": payload}
+		context := map[string]any{
+			"requested_level": "full", "system_ceiling": "full", "synthetic_attestation": attestation, "sink_verification": verification,
+		}
+		result := captureResult("metadata", "drop_payload", entry.code, nil)
+		switch entry.suffix {
+		case "verified":
+			result = captureResult("full", "allow_full_payload", nil, payload)
+		case "forged":
+			input["synthetic_attestation"] = attestation
+			context["synthetic_attestation"] = nil
+			verification["issuer_authenticated"] = false
+		case "expired":
+			attestation["expires_at"] = "2030-01-01T00:00:00Z"
+		case "revoked":
+			verification["revoked"] = true
+		case "manifest_changed":
+			verification["manifest_matches"] = false
+		case "scope_mismatch":
+			verification["scope_matches"] = false
+		}
+		vectors["provenance.synthetic_attestation_"+entry.suffix] = sourceVector(input, context, result)
+	}
+	return vectors
 }
 
 func sourceVector(input, context, expected map[string]any) captureVectorExpectation {

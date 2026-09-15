@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "corpus_version": "2026-09-10.2",
+  "corpus_version": "2026-09-15.1",
   "ticket": "LAS-3488",
   "governance_doc": "docs/agent/llm-trace-governance.md",
-  "description": "Synthetic reference cases for the proposed egress redacted/full capture contract. They are not a transcript of either current redactor.",
+  "description": "Synthetic reference cases for the proposed egress redacted/full capture contract. They are not a transcript of either current redactor. Positive national-identifier cases are excluded because their nonassignment is unverified; invalid-checksum and malformed near misses remain.",
   "scope": "This file tests ONE layer: text redaction of a single string. Structural filtering of parsed tool arguments (key allowlisting) and capture-level routing are separate layers, owned by the emitter, and are NOT testable from this file. See the governance doc, section 'Redaction validation'.",
   "placeholders": {
     "finnish_hetu": "[HETU]",
@@ -21,204 +21,6 @@
     "secret": "[SECRET]"
   },
   "cases": [
-    {
-      "id": "fi.hetu.free_text",
-      "locale": "fi",
-      "kind": "positive",
-      "categories": [
-        "finnish_hetu"
-      ],
-      "input": "Hei, henkilötunnukseni on 131052-308T, voisitteko tarkistaa tilaukseni?",
-      "expected": {
-        "redacted": "Hei, henkilötunnukseni on [HETU], voisitteko tarkistaa tilaukseni?",
-        "metadata": null,
-        "full": "Hei, henkilötunnukseni on 131052-308T, voisitteko tarkistaa tilaukseni?"
-      },
-      "notes": "The commonest Finnish shape: a HETU volunteered mid-sentence.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "fi.hetu.century_a",
-      "locale": "fi",
-      "kind": "positive",
-      "categories": [
-        "finnish_hetu"
-      ],
-      "input": "Lapsen hetu on 010106A9012 varausta varten.",
-      "expected": {
-        "redacted": "Lapsen hetu on [HETU] varausta varten.",
-        "metadata": null,
-        "full": "Lapsen hetu on 010106A9012 varausta varten."
-      },
-      "notes": "2000s century marker A.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "fi.hetu.century_plus",
-      "locale": "fi",
-      "kind": "positive",
-      "categories": [
-        "finnish_hetu"
-      ],
-      "input": "Arkistotieto: 131052+308T",
-      "expected": {
-        "redacted": "Arkistotieto: [HETU]",
-        "metadata": null,
-        "full": "Arkistotieto: 131052+308T"
-      },
-      "notes": "1800s century marker +.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "fi.hetu.lowercase",
-      "locale": "fi",
-      "kind": "positive",
-      "categories": [
-        "finnish_hetu"
-      ],
-      "input": "hetu 131052a308t",
-      "expected": {
-        "redacted": "hetu [HETU]",
-        "metadata": null,
-        "full": "hetu 131052a308t"
-      },
-      "notes": "Lowercase century marker and checksum letter.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "sv.personnummer.separated",
-      "locale": "sv",
-      "kind": "positive",
-      "categories": [
-        "swedish_personnummer"
-      ],
-      "input": "Mitt personnummer är 811218-9876.",
-      "expected": {
-        "redacted": "Mitt personnummer är [PERSONNUMMER].",
-        "metadata": null,
-        "full": "Mitt personnummer är 811218-9876."
-      },
-      "notes": null,
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "sv.personnummer.unseparated",
-      "locale": "sv",
-      "kind": "positive",
-      "categories": [
-        "swedish_personnummer"
-      ],
-      "input": "Personnummer 198112189876 tack.",
-      "expected": {
-        "redacted": "Personnummer [PERSONNUMMER] tack.",
-        "metadata": null,
-        "full": "Personnummer 198112189876 tack."
-      },
-      "notes": "Twelve-digit unseparated form. In Rails this detector is market-gated to SE brands at ingress; the trace redactor must run it for every brand.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "sv.personnummer.coordination",
-      "locale": "sv",
-      "kind": "positive",
-      "categories": [
-        "swedish_personnummer"
-      ],
-      "input": "Samordningsnummer 811278-9873 för bokningen.",
-      "expected": {
-        "redacted": "Samordningsnummer [PERSONNUMMER] för bokningen.",
-        "metadata": null,
-        "full": "Samordningsnummer 811278-9873 för bokningen."
-      },
-      "notes": "Coordination number: day field is the birth day plus 60.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "et.isikukood",
-      "locale": "et",
-      "kind": "positive",
-      "categories": [
-        "estonian_isikukood"
-      ],
-      "input": "Minu isikukood on 37605030299.",
-      "expected": {
-        "redacted": "Minu isikukood on [ISIKUKOOD].",
-        "metadata": null,
-        "full": "Minu isikukood on 37605030299."
-      },
-      "notes": null,
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "pl.pesel",
-      "locale": "pl",
-      "kind": "positive",
-      "categories": [
-        "polish_pesel"
-      ],
-      "input": "Mój PESEL to 44051401359.",
-      "expected": {
-        "redacted": "Mój PESEL to [PESEL].",
-        "metadata": null,
-        "full": "Mój PESEL to 44051401359."
-      },
-      "notes": null,
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "da.cpr",
-      "locale": "da",
-      "kind": "positive",
-      "categories": [
-        "danish_cpr"
-      ],
-      "input": "Mit CPR-nummer er 250347-1119.",
-      "expected": {
-        "redacted": "Mit CPR-nummer er [CPR].",
-        "metadata": null,
-        "full": "Mit CPR-nummer er 250347-1119."
-      },
-      "notes": null,
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "da.cpr.ambiguous_with_personnummer",
-      "locale": "da",
-      "kind": "positive",
-      "categories": [
-        "danish_cpr"
-      ],
-      "input": "Mit CPR-nummer er 070761-4285.",
-      "expected": {
-        "redacted": "Mit CPR-nummer er [CPR].",
-        "metadata": null,
-        "full": "Mit CPR-nummer er 070761-4285."
-      },
-      "notes": "This value satisfies the Danish CPR rules AND the Swedish personnummer rules. Whichever detector runs first wins the label. Mislabelling is not a leak, but it is a defect: an operator filtering traces by category will not find it.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
     {
       "id": "fi.iban.spaced",
       "locale": "fi",
@@ -364,80 +166,6 @@
       ]
     },
     {
-      "id": "fi.multi_category_one_string",
-      "locale": "fi",
-      "kind": "positive",
-      "categories": [
-        "finnish_hetu",
-        "iban",
-        "payment_card"
-      ],
-      "input": "hetu 131052-308T, tili FI21 1234 5600 0007 85, kortti 4111 1111 1111 1111",
-      "expected": {
-        "redacted": "hetu [HETU], tili [IBAN], kortti [CARD ****1111]",
-        "metadata": null,
-        "full": "hetu 131052-308T, tili FI21 1234 5600 0007 85, kortti 4111 1111 1111 1111"
-      },
-      "notes": "Three categories in one string: proves the detectors do not consume each other's spans.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "multi.repeated_across_lines",
-      "locale": "fi",
-      "kind": "positive",
-      "categories": [
-        "finnish_hetu"
-      ],
-      "input": "rivi 1: 131052-308T\nrivi 2: 131052-308T",
-      "expected": {
-        "redacted": "rivi 1: [HETU]\nrivi 2: [HETU]",
-        "metadata": null,
-        "full": "rivi 1: 131052-308T\nrivi 2: 131052-308T"
-      },
-      "notes": "Multiline input; both occurrences must go.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "mixed.emoji_around_identifier",
-      "locale": "mixed",
-      "kind": "positive",
-      "categories": [
-        "finnish_hetu"
-      ],
-      "input": "kiitos 🎉 hetu 131052-308T 🎉",
-      "expected": {
-        "redacted": "kiitos 🎉 hetu [HETU] 🎉",
-        "metadata": null,
-        "full": "kiitos 🎉 hetu 131052-308T 🎉"
-      },
-      "notes": "Non-BMP characters adjacent to the match: a byte-offset bug shows up here.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
-      "id": "mixed.escaped_json_string",
-      "locale": "mixed",
-      "kind": "positive",
-      "categories": [
-        "finnish_hetu"
-      ],
-      "input": "{\"muistiinpano\":\"hetu 131052-308T ja \\\"lainaus\\\"\"}",
-      "expected": {
-        "redacted": "{\"muistiinpano\":\"hetu [HETU] ja \\\"lainaus\\\"\"}",
-        "metadata": null,
-        "full": "{\"muistiinpano\":\"hetu 131052-308T ja \\\"lainaus\\\"\"}"
-      },
-      "notes": "Serialized JSON containing escaped quotes. Redacting the serialized form must not break the escaping.",
-      "capabilities": [
-        "regex_reference"
-      ]
-    },
-    {
       "id": "en.email.simple",
       "locale": "en",
       "kind": "positive",
@@ -498,13 +226,13 @@
       "categories": [
         "email"
       ],
-      "input": "Skicka till asiakas@example.invalid",
+      "input": "Skicka till asiakas@xn--bcher-kva.invalid",
       "expected": {
         "redacted": "Skicka till [EMAIL]",
         "metadata": null,
-        "full": "Skicka till asiakas@example.invalid"
+        "full": "Skicka till asiakas@xn--bcher-kva.invalid"
       },
-      "notes": "Punycode domain.",
+      "notes": "ASCII punycode label beneath the reserved .invalid top-level domain; no deliverable mailbox.",
       "capabilities": [
         "regex_reference"
       ]
@@ -754,11 +482,11 @@
         "email",
         "phone"
       ],
-      "input": "客户 Ирина Петрова kirjoitti osoitteesta irina.petrova@example.se numerosta +46701234567",
+      "input": "客户 Ирина Петрова kirjoitti osoitteesta irina.petrova@example.invalid numerosta +46701234567",
       "expected": {
         "redacted": "客户 [NAME] kirjoitti osoitteesta [EMAIL] numerosta [PHONE]",
         "metadata": null,
-        "full": "客户 Ирина Петрова kirjoitti osoitteesta irina.petrova@example.se numerosta +46701234567"
+        "full": "客户 Ирина Петрова kirjoitti osoitteesta irina.petrova@example.invalid numerosta +46701234567"
       },
       "notes": "Han, Cyrillic and Latin in one string. A name detector trained on Latin script alone fails here.",
       "capabilities": [
@@ -900,11 +628,11 @@
         "person_name",
         "email"
       ],
-      "input": "{\"order\":{\"id\":\"ORD-2026-000123\",\"customer\":{\"name\":\"Anna Karlsson\",\"email\":\"anna.karlsson@example.se\"},\"total\":\"59.70 EUR\"}}",
+      "input": "{\"order\":{\"id\":\"ORD-2026-000123\",\"customer\":{\"name\":\"Anna Karlsson\",\"email\":\"anna.karlsson@example.invalid\"},\"total\":\"59.70 EUR\"}}",
       "expected": {
         "redacted": "{\"order\":{\"id\":\"ORD-2026-000123\",\"customer\":{\"name\":\"[NAME]\",\"email\":\"[EMAIL]\"},\"total\":\"59.70 EUR\"}}",
         "metadata": null,
-        "full": "{\"order\":{\"id\":\"ORD-2026-000123\",\"customer\":{\"name\":\"Anna Karlsson\",\"email\":\"anna.karlsson@example.se\"},\"total\":\"59.70 EUR\"}}"
+        "full": "{\"order\":{\"id\":\"ORD-2026-000123\",\"customer\":{\"name\":\"Anna Karlsson\",\"email\":\"anna.karlsson@example.invalid\"},\"total\":\"59.70 EUR\"}}"
       },
       "notes": "A tool RESULT, which is where third-party systems hand us customer records we never asked for.",
       "capabilities": [
