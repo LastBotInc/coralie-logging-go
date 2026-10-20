@@ -4,7 +4,7 @@
 
 | Property | Value |
 |----------|-------|
-| Language | Go 1.26.5+ |
+| Language | Go 1.26.9+ |
 | Module | `github.com/LastBotInc/coralie-logging-go` |
 | Type | Shared library (logging package) |
 | Packages | `pkg/clog`, `pkg/pcmlog` |
