@@ -2,7 +2,7 @@
 
 ## Language & Toolchain
 
-- Go version: 1.26.5+ (as specified in go.mod)
+- Go version: 1.26.9+ (as specified in go.mod)
 - Module path: `github.com/LastBotInc/coralie-logging-go`
 - No vendoring; use Go module proxy
 
