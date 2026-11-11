@@ -10,6 +10,14 @@ All notable changes to coralie-logging-go will be documented in this file.
 
 ## [Unreleased]
 
+## 2026-11-11
+
+- Go 1.27.4 toolchain for the module, CI and docs (go1.26.10 was affected by
+  GO-2026-6859, `net/http`); golangci-lint pin v2.11.3 → v2.15.0, since older
+  lint builds reject go 1.27 modules (LAS-5465).
+- `examples/fyne-audio-monitor`: `golang.org/x/image` bumped to clear
+  GO-2026-5066 / GO-2026-5062 (example only; the library is unaffected).
+
 ## 2026-09-14
 
 - Add `LogContext` and optional `EventSink` for OpenTelemetry trace/span correlation
