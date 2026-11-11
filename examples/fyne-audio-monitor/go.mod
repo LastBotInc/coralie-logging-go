@@ -1,6 +1,6 @@
 module github.com/LastBotInc/coralie-logging-go/examples/fyne-audio-monitor
 
-go 1.26.10
+go 1.27.4
 
 replace github.com/LastBotInc/coralie-logging-go => ../..
 
@@ -38,8 +38,8 @@ require (
 	go.opentelemetry.io/otel v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/image v0.41.0 // indirect
+	golang.org/x/image v0.48.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
 )
