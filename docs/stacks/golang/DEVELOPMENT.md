@@ -8,7 +8,7 @@ git clone https://github.com/LastBotInc/coralie-logging-go.git
 cd coralie-logging-go
 
 # Verify Go version
-go version  # must be 1.26.11+
+go version  # must be 1.27.4+
 
 # Download dependencies
 go mod download
