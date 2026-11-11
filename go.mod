@@ -1,6 +1,6 @@
 module github.com/LastBotInc/coralie-logging-go
 
-go 1.26.10
+go 1.26.11
 
 require (
 	go.opentelemetry.io/otel/trace v1.47.0

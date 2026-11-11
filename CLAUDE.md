@@ -8,7 +8,7 @@
 - **Name**: coralie-logging-go
 - **Type**: Shared Go library (logging package)
 - **Module**: `github.com/LastBotInc/coralie-logging-go`
-- **Go version**: 1.26.10+
+- **Go version**: 1.26.11+
 - **License**: MIT
 
 ## Quick Commands
